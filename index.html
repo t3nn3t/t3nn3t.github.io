@@ -24,26 +24,62 @@
     </script>
   </head>
   <body>
-    <canvas id="scene" aria-hidden="true"></canvas>
-    <div class="pixel-grid" aria-hidden="true"></div>
+    <svg class="screen-filters" aria-hidden="true" focusable="false">
+      <defs>
+        <filter id="screen-chromatic" x="-2%" y="-2%" width="104%" height="104%" color-interpolation-filters="sRGB">
+          <feColorMatrix in="SourceGraphic" result="red" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" />
+          <feColorMatrix in="SourceGraphic" result="green" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" />
+          <feColorMatrix in="SourceGraphic" result="blue" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" />
+          <feOffset in="red" dx="-0.7" result="red-shift" />
+          <feOffset in="blue" dx="0.7" result="blue-shift" />
+          <feBlend in="red-shift" in2="green" mode="screen" result="red-green" />
+          <feBlend in="red-green" in2="blue-shift" mode="screen" />
+        </filter>
+        <filter id="drift-chromatic" x="-3%" y="-3%" width="106%" height="106%" color-interpolation-filters="sRGB">
+          <feColorMatrix in="SourceGraphic" result="red" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" />
+          <feColorMatrix in="SourceGraphic" result="green" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" />
+          <feColorMatrix in="SourceGraphic" result="blue" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" />
+          <feOffset in="red" dx="-2.4" dy="-0.35" result="red-shift" />
+          <feOffset in="blue" dx="2.4" dy="0.35" result="blue-shift" />
+          <feBlend in="red-shift" in2="green" mode="screen" result="red-green" />
+          <feBlend in="red-green" in2="blue-shift" mode="screen" />
+        </filter>
+        <filter id="title-chromatic" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+          <feColorMatrix in="SourceGraphic" result="red" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" />
+          <feColorMatrix in="SourceGraphic" result="green" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" />
+          <feColorMatrix in="SourceGraphic" result="blue" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" />
+          <feOffset in="red" dx="-2.1" result="red-shift" />
+          <feOffset in="blue" dx="2.1" result="blue-shift" />
+          <feBlend in="red-shift" in2="green" mode="screen" result="red-green" />
+          <feBlend in="red-green" in2="blue-shift" mode="screen" />
+        </filter>
+      </defs>
+    </svg>
 
-    <header class="topbar">
+    <div class="screen">
+      <canvas id="scene" aria-hidden="true"></canvas>
+
+      <header class="topbar">
       <button class="wordmark" type="button" id="restart" aria-label="Restart drive"><span aria-hidden="true">★</span> JT ARCADE</button>
       <nav aria-label="Portfolio links">
         <a href="https://github.com/t3nn3t" target="_blank" rel="noreferrer">High scores: GitHub ↗</a>
       </nav>
-    </header>
+      </header>
 
-    <main>
+      <main>
       <section class="hero" id="hero" aria-labelledby="hero-title">
-        <p class="eyebrow"><span>Player 1</span> Jake's road · London</p>
-        <h1 id="hero-title">Jake<br />Tennet<span>.</span></h1>
-        <p class="hero__intro">A winding road through the things I’ve built.</p>
-        <button class="start-button" id="start-drive" type="button">
-          Press start <span aria-hidden="true">▶</span>
-        </button>
-        <p class="hero__controls">WASD / arrows to drive · Hold Shift to drift</p>
-        <p class="hero__coin" aria-hidden="true">© 2026 JT GAMES · 1 CREDIT</p>
+        <div class="hero__title">
+          <p class="eyebrow">Jake Tennet presents</p>
+          <h1 id="hero-title"><span>Jake</span><span>Tennet</span></h1>
+          <p class="hero__intro">A playable portfolio</p>
+        </div>
+        <div class="hero__start">
+          <button class="start-button" id="start-drive" type="button">
+            <span aria-hidden="true">▶</span> Press start
+          </button>
+          <p class="hero__controls">WASD / arrows · Shift to drift</p>
+          <p class="hero__coin" aria-hidden="true">1 player · © 2026 JT Games · 1 credit</p>
+        </div>
       </section>
 
       <section class="game-ui" id="game-ui" aria-label="Driving game" aria-hidden="true">
@@ -102,7 +138,10 @@
           </div>
         </div>
       </section>
-    </main>
+      </main>
+
+      <div class="pixel-grid" aria-hidden="true"></div>
+    </div>
 
     <noscript>
       <div class="noscript">This portfolio needs JavaScript for the driving experience.</div>

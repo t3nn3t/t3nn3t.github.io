@@ -40,6 +40,7 @@ const palette = {
 const ROAD_HALF_WIDTH = 5.6;
 const TRACK_SAMPLE_COUNT = 720;
 const MAX_SPEED = 38;
+const DRIFT_BOOST_SCALE = 1.25;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(palette.sky);
@@ -680,6 +681,7 @@ function startDrive() {
   state.countdown = 2.15;
   resetCar(true, true);
   hero.classList.add('is-hidden');
+  document.body.classList.add('is-playing');
   gameUi.classList.add('is-active');
   gameUi.setAttribute('aria-hidden', 'false');
   finishScreen.classList.remove('is-active');
@@ -706,6 +708,7 @@ function restartExperience() {
   input.touch.clear();
   resetCar(true, true);
   hero.classList.remove('is-hidden');
+  document.body.classList.remove('is-playing');
   gameUi.classList.remove('is-active');
   gameUi.setAttribute('aria-hidden', 'true');
   finishScreen.classList.remove('is-active');
@@ -841,8 +844,8 @@ function updatePhysics(delta) {
 
   if (releasedHandbrake && state.driftTime > 0.35 && state.driftChain > 8) {
     const boostLevel = THREE.MathUtils.clamp(state.driftTime / 3, 0, 1);
-    state.boostTimer = 0.62 + boostLevel * 0.88;
-    state.boostPower = 12 + boostLevel * 6;
+    state.boostTimer = (0.62 + boostLevel * 0.88) * DRIFT_BOOST_SCALE;
+    state.boostPower = (12 + boostLevel * 6) * DRIFT_BOOST_SCALE;
   }
 
   state.driftBlend = THREE.MathUtils.damp(
@@ -913,8 +916,8 @@ function updatePhysics(delta) {
   state.velocity.multiplyScalar(Math.exp(-drag * delta));
 
   const speedLimit = offRoad
-    ? 30 + (state.boostTimer > 0 ? 3 : 0)
-    : MAX_SPEED + (state.boostTimer > 0 ? 6 : 0);
+    ? 30 + (state.boostTimer > 0 ? 3 * DRIFT_BOOST_SCALE : 0)
+    : MAX_SPEED + (state.boostTimer > 0 ? 6 * DRIFT_BOOST_SCALE : 0);
   if (state.velocity.length() > speedLimit) state.velocity.setLength(speedLimit);
   state.position.addScaledVector(state.velocity, delta);
   state.position.y = 0.06;
@@ -981,6 +984,8 @@ function updateCar(delta, elapsed) {
   const speed = state.velocity.length();
   const forward = forwardVector();
   car.position.copy(state.position);
+  const attractIdle = !state.started && !reducedMotion ? Math.sin(elapsed * 3.2) * 0.022 : 0;
+  car.position.y += attractIdle;
   const terrainBump = !state.onRoad && !reducedMotion ? Math.sin(elapsed * 25) * Math.min(speed / 30, 1) * 0.055 : 0;
   car.position.y += terrainBump;
   car.rotation.y = state.heading;
@@ -988,7 +993,11 @@ function updateCar(delta, elapsed) {
   car.rotation.x = state.braking ? -0.025 : controlActive('throttle') ? 0.012 : 0;
   car.userData.wheels.forEach((wheel) => { wheel.rotation.x -= state.velocity.dot(forward) * delta * 1.9; });
   car.userData.frontPivots.forEach((pivot) => { pivot.rotation.y = -state.steerVisual * 0.34; });
-  car.userData.brakeLights.forEach((material) => { material.emissiveIntensity = state.braking ? 4 : 1.25; });
+  car.userData.brakeLights.forEach((material) => {
+    material.emissiveIntensity = state.started
+      ? (state.braking ? 4 : 1.25)
+      : 1.8 + Math.sin(elapsed * 2.4) * 0.45;
+  });
   car.userData.boostFlames.forEach((flame, index) => {
     flame.visible = state.boostTimer > 0;
     flame.scale.y = 0.8 + Math.sin(elapsed * 42 + index) * 0.24;
