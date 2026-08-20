@@ -40,6 +40,8 @@ const palette = {
 const ROAD_HALF_WIDTH = 5.6;
 const TRACK_SAMPLE_COUNT = 720;
 const MAX_SPEED = 38;
+const MAX_REVERSE_SPEED = 11;
+const REVERSE_ENGAGE_DELAY = 0.18;
 const DRIFT_BOOST_SCALE = 1.25;
 
 const scene = new THREE.Scene();
@@ -649,6 +651,7 @@ const state = {
   driftBlend: 0,
   steerVisual: 0,
   braking: false,
+  reverseHold: 0,
   drifting: false,
   onRoad: true,
   nearestIndex: 0,
@@ -714,6 +717,7 @@ function resetCar(snapCamera = false, toStart = false) {
   state.driftBlend = 0;
   state.steerVisual = 0;
   state.braking = false;
+  state.reverseHold = 0;
   state.drifting = false;
   state.nearestIndex = index;
   state.roadDistance = 0;
@@ -923,7 +927,7 @@ function updatePhysics(delta) {
     Math.cos(state.heading - velocityHeading),
   );
   const driftIntent = handbrake
-    && Math.abs(longitudinalSpeed) > 6.2
+    && longitudinalSpeed > 6.2
     && (steerInput !== 0 || state.driftBlend > 0.18);
   const enteringDrift = driftIntent && state.driftBlend < 0.08;
 
@@ -942,7 +946,8 @@ function updatePhysics(delta) {
 
   if (Math.abs(longitudinalSpeed) > 0.7) {
     const direction = Math.sign(longitudinalSpeed);
-    const normalSteeringRate = THREE.MathUtils.lerp(0.34, 0.76, Math.min(speedRatio * 1.3, 1));
+    const reverseSteeringScale = direction < 0 ? 0.58 : 1;
+    const normalSteeringRate = THREE.MathUtils.lerp(0.34, 0.76, Math.min(speedRatio * 1.3, 1)) * reverseSteeringScale;
     const normalYawTarget = (-steerInput * normalSteeringRate * direction) - slipAngle * 1.65;
     const driftSteeringRate = THREE.MathUtils.lerp(1.25, 1.62, speedRatio);
     const driftYawTarget = (-steerInput * driftSteeringRate * direction) - slipAngle * 0.12;
@@ -983,8 +988,18 @@ function updatePhysics(delta) {
   }
 
   if (brake) {
-    if (longitudinalSpeed > 1.5) state.velocity.addScaledVector(forward, -30 * delta);
-    else state.velocity.addScaledVector(forward, -11 * delta);
+    if (longitudinalSpeed > 0.05) {
+      const brakingDelta = Math.min(longitudinalSpeed, 30 * delta);
+      state.velocity.addScaledVector(forward, -brakingDelta);
+      state.reverseHold = 0;
+    } else {
+      state.reverseHold = Math.min(REVERSE_ENGAGE_DELAY, state.reverseHold + delta);
+      if (state.reverseHold >= REVERSE_ENGAGE_DELAY) {
+        state.velocity.addScaledVector(forward, -11 * delta);
+      }
+    }
+  } else {
+    state.reverseHold = 0;
   }
 
   const lateralGrip = offRoad
@@ -1000,9 +1015,12 @@ function updatePhysics(delta) {
       : throttle ? 0.1 : 0.32;
   state.velocity.multiplyScalar(Math.exp(-drag * delta));
 
-  const speedLimit = offRoad
-    ? 30 + (state.boostTimer > 0 ? 3 * DRIFT_BOOST_SCALE : 0)
-    : MAX_SPEED + (state.boostTimer > 0 ? 6 * DRIFT_BOOST_SCALE : 0);
+  const movingInReverse = state.velocity.dot(forward) < -0.1;
+  const speedLimit = movingInReverse
+    ? offRoad ? MAX_REVERSE_SPEED * 0.72 : MAX_REVERSE_SPEED
+    : offRoad
+      ? 30 + (state.boostTimer > 0 ? 3 * DRIFT_BOOST_SCALE : 0)
+      : MAX_SPEED + (state.boostTimer > 0 ? 6 * DRIFT_BOOST_SCALE : 0);
   if (state.velocity.length() > speedLimit) state.velocity.setLength(speedLimit);
   state.position.addScaledVector(state.velocity, delta);
   state.position.y = 0.06;
@@ -1034,7 +1052,7 @@ function updatePhysics(delta) {
   longitudinalSpeed = state.velocity.dot(forward);
   lateralSpeed = state.velocity.dot(right);
   const slipDegrees = THREE.MathUtils.radToDeg(Math.atan2(Math.abs(lateralSpeed), Math.max(Math.abs(longitudinalSpeed), 0.1)));
-  state.drifting = state.driftBlend > 0.18 && Math.abs(longitudinalSpeed) > 6.2 && slipDegrees > 4.5;
+  state.drifting = state.driftBlend > 0.18 && longitudinalSpeed > 6.2 && slipDegrees > 4.5;
   state.braking = brake && longitudinalSpeed > 0.5;
   state.steerVisual = THREE.MathUtils.damp(state.steerVisual, steerInput, 9, delta);
 
