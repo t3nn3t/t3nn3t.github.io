@@ -490,7 +490,17 @@ function createGarage() {
 
 function addWorldObjects() {
   placeAtTrack(createArch('START', 'SHIFT TO DRIFT'), 0.018, 0, 0, false);
-  placeAtTrack(createPortfolioBillboard(), 0.145, -1, 11.5);
+  const blueSideBillboardT = 0.145;
+  const blueSideBillboard = createPortfolioBillboard();
+  blueSideBillboard.scale.setScalar(1.32);
+  placeAtTrack(blueSideBillboard, blueSideBillboardT, -1, 13);
+  const billboardTangent = trackCurve.getTangentAt(blueSideBillboardT).normalize();
+  const billboardTowardRoad = trackRight(billboardTangent);
+  const billboardTowardDrivers = billboardTangent.clone()
+    .multiplyScalar(-1)
+    .addScaledVector(billboardTowardRoad, 0.52)
+    .normalize();
+  blueSideBillboard.rotation.y = Math.atan2(billboardTowardDrivers.x, billboardTowardDrivers.z);
   placeAtTrack(createBlueSide(), 0.13, 1, 15);
   placeAtTrack(createDonutShop(), 0.27, -1, 15);
   placeAtTrack(createResearchLab(), 0.42, 1, 15);
