@@ -494,6 +494,7 @@ function addWorldObjects() {
   const blueSideBillboard = createPortfolioBillboard();
   blueSideBillboard.scale.setScalar(2.64);
   placeAtTrack(blueSideBillboard, blueSideBillboardT, -1, 19.2);
+  blueSideBillboard.position.y = -5.6;
   const billboardTangent = trackCurve.getTangentAt(blueSideBillboardT).normalize();
   const billboardTowardRoad = trackRight(billboardTangent);
   const billboardTowardDrivers = billboardTangent.clone()
