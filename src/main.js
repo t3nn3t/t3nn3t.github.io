@@ -492,8 +492,8 @@ function addWorldObjects() {
   placeAtTrack(createArch('START', 'SHIFT TO DRIFT'), 0.018, 0, 0, false);
   const blueSideBillboardT = 0.145;
   const blueSideBillboard = createPortfolioBillboard();
-  blueSideBillboard.scale.setScalar(1.32);
-  placeAtTrack(blueSideBillboard, blueSideBillboardT, -1, 13);
+  blueSideBillboard.scale.setScalar(2.64);
+  placeAtTrack(blueSideBillboard, blueSideBillboardT, -1, 19.2);
   const billboardTangent = trackCurve.getTangentAt(blueSideBillboardT).normalize();
   const billboardTowardRoad = trackRight(billboardTangent);
   const billboardTowardDrivers = billboardTangent.clone()
