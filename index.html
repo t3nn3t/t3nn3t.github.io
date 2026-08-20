@@ -3,8 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Jake Tennet — creative developer." />
-    <title>Jake Tennet</title>
+    <meta name="description" content="Jake Tennet's interactive arcade-driving portfolio." />
+    <meta name="theme-color" content="#7588b1" />
+    <meta property="og:title" content="Jake Tennet — Engineer, founder, builder" />
+    <meta property="og:description" content="Take a drive through Jake Tennet's work." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://jaketennet.com/" />
+    <meta property="og:image" content="https://jaketennet.com/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://jaketennet.com/og.png" />
+    <title>Jake Tennet — Drive</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23ff5d35'/%3E%3Cpath d='M16 15h12v25c0 9-5 13-14 13l-2-10c3 0 4-1 4-4V15Zm17 0h21v10h-9v28H33V15Z' fill='%23fff8e7'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="/src/style.css" />
     <script type="importmap">
       {
@@ -16,14 +25,89 @@
   </head>
   <body>
     <canvas id="scene" aria-hidden="true"></canvas>
+    <div class="pixel-grid" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <button class="wordmark" type="button" id="restart" aria-label="Restart drive">JT<span>.</span></button>
+      <nav aria-label="Portfolio links">
+        <a href="https://github.com/t3nn3t" target="_blank" rel="noreferrer">GitHub ↗</a>
+      </nav>
+    </header>
 
     <main>
-      <p class="eyebrow">Creative developer</p>
-      <h1>Jake<br />Tennet<span>.</span></h1>
-      <p class="intro">A new corner of the internet is taking shape.</p>
+      <section class="hero" id="hero" aria-labelledby="hero-title">
+        <p class="eyebrow"><span>Free drive</span> Jake's road · London</p>
+        <h1 id="hero-title">Jake<br />Tennet<span>.</span></h1>
+        <p class="hero__intro">A winding road through the things I’ve built.</p>
+        <button class="start-button" id="start-drive" type="button">
+          Start driving <span aria-hidden="true">→</span>
+        </button>
+        <p class="hero__controls">WASD / arrows to drive · Hold Shift to drift</p>
+      </section>
+
+      <section class="game-ui" id="game-ui" aria-label="Driving game" aria-hidden="true">
+        <div class="speed-hud" aria-live="polite">
+          <span id="speed-value">000</span>
+          <small>MPH</small>
+          <b id="gear-value">N</b>
+        </div>
+
+        <div class="route-hud">
+          <p>Jake's road</p>
+          <div class="route-track" aria-hidden="true"><span id="route-fill"></span></div>
+          <p id="route-percent">0%</p>
+        </div>
+
+        <div class="timer-hud" aria-live="off">
+          <span>Time</span>
+          <strong id="timer-value">00:00.000</strong>
+        </div>
+
+        <div class="drift-hud" id="drift-hud" aria-live="polite">
+          <span id="drift-label">Drift</span>
+          <strong id="drift-score">0</strong>
+        </div>
+
+        <div class="surface-hud" id="surface-hud">Asphalt</div>
+
+        <div class="control-hint">
+          <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Drive</p>
+          <p><kbd>Shift</kbd> Drift</p>
+          <p><kbd>R</kbd> Reset</p>
+        </div>
+
+        <div class="mobile-controls" aria-label="Touch driving controls">
+          <div class="mobile-controls__steer">
+            <button type="button" data-control="left" aria-label="Steer left">←</button>
+            <button type="button" data-control="right" aria-label="Steer right">→</button>
+          </div>
+          <button class="drift-button" type="button" data-control="drift" aria-label="Drift">Drift</button>
+          <div class="mobile-controls__pedals">
+            <button type="button" data-control="brake" aria-label="Brake or reverse">↓</button>
+            <button type="button" data-control="throttle" aria-label="Accelerate">↑</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="countdown" id="countdown" aria-live="assertive"></div>
+
+      <section class="finish-screen" id="finish-screen" aria-hidden="true">
+        <div class="finish-panel" role="dialog" aria-modal="true" aria-labelledby="finish-title" aria-describedby="finish-copy">
+          <p class="finish-panel__kicker">Run complete</p>
+          <h2 id="finish-title"><span id="finish-time">00:00.000</span></h2>
+          <p id="finish-copy">Fast enough to reach the inbox.</p>
+          <div class="finish-actions">
+            <a id="finish-email" href="mailto:jaketennet@gmail.com">Send Jake an email <span aria-hidden="true">↗</span></a>
+            <button id="start-again" type="button">Start again <span aria-hidden="true">↻</span></button>
+          </div>
+        </div>
+      </section>
     </main>
 
-    <p class="hint">Move your pointer</p>
+    <noscript>
+      <div class="noscript">This portfolio needs JavaScript for the driving experience.</div>
+    </noscript>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
