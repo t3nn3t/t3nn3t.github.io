@@ -922,9 +922,10 @@ function updatePhysics(delta) {
   const velocityHeading = absoluteSpeed > 0.5
     ? Math.atan2(-state.velocity.x, -state.velocity.z)
     : state.heading;
+  const travelHeading = state.heading + (longitudinalSpeed < 0 ? Math.PI : 0);
   const slipAngle = Math.atan2(
-    Math.sin(state.heading - velocityHeading),
-    Math.cos(state.heading - velocityHeading),
+    Math.sin(travelHeading - velocityHeading),
+    Math.cos(travelHeading - velocityHeading),
   );
   const driftIntent = handbrake
     && longitudinalSpeed > 6.2
