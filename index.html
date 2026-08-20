@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Jake Tennet's interactive arcade-driving portfolio." />
-    <meta name="theme-color" content="#7588b1" />
+    <meta name="theme-color" content="#090b18" />
     <meta property="og:title" content="Jake Tennet — Engineer, founder, builder" />
     <meta property="og:description" content="Take a drive through Jake Tennet's work." />
     <meta property="og:type" content="website" />
@@ -28,21 +28,22 @@
     <div class="pixel-grid" aria-hidden="true"></div>
 
     <header class="topbar">
-      <button class="wordmark" type="button" id="restart" aria-label="Restart drive">JT<span>.</span></button>
+      <button class="wordmark" type="button" id="restart" aria-label="Restart drive"><span aria-hidden="true">★</span> JT ARCADE</button>
       <nav aria-label="Portfolio links">
-        <a href="https://github.com/t3nn3t" target="_blank" rel="noreferrer">GitHub ↗</a>
+        <a href="https://github.com/t3nn3t" target="_blank" rel="noreferrer">High scores: GitHub ↗</a>
       </nav>
     </header>
 
     <main>
       <section class="hero" id="hero" aria-labelledby="hero-title">
-        <p class="eyebrow"><span>Free drive</span> Jake's road · London</p>
+        <p class="eyebrow"><span>Player 1</span> Jake's road · London</p>
         <h1 id="hero-title">Jake<br />Tennet<span>.</span></h1>
         <p class="hero__intro">A winding road through the things I’ve built.</p>
         <button class="start-button" id="start-drive" type="button">
-          Start driving <span aria-hidden="true">→</span>
+          Press start <span aria-hidden="true">▶</span>
         </button>
         <p class="hero__controls">WASD / arrows to drive · Hold Shift to drift</p>
+        <p class="hero__coin" aria-hidden="true">© 2026 JT GAMES · 1 CREDIT</p>
       </section>
 
       <section class="game-ui" id="game-ui" aria-label="Driving game" aria-hidden="true">
@@ -64,7 +65,6 @@
         </div>
 
         <div class="drift-hud" id="drift-hud" aria-live="polite">
-          <span id="drift-label">Drift</span>
           <strong id="drift-score">0</strong>
         </div>
 
@@ -93,7 +93,7 @@
 
       <section class="finish-screen" id="finish-screen" aria-hidden="true">
         <div class="finish-panel" role="dialog" aria-modal="true" aria-labelledby="finish-title" aria-describedby="finish-copy">
-          <p class="finish-panel__kicker">Run complete</p>
+          <p class="finish-panel__kicker">Stage clear!</p>
           <h2 id="finish-title"><span id="finish-time">00:00.000</span></h2>
           <p id="finish-copy">Fast enough to reach the inbox.</p>
           <div class="finish-actions">

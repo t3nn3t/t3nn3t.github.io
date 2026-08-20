@@ -11,7 +11,6 @@ const routeFill = document.querySelector('#route-fill');
 const routePercent = document.querySelector('#route-percent');
 const timerValue = document.querySelector('#timer-value');
 const driftHud = document.querySelector('#drift-hud');
-const driftLabel = document.querySelector('#drift-label');
 const driftScore = document.querySelector('#drift-score');
 const surfaceHud = document.querySelector('#surface-hud');
 const countdownElement = document.querySelector('#countdown');
@@ -637,6 +636,7 @@ function resetCar(snapCamera = false, toStart = false) {
   state.driftTime = 0;
   state.driftMultiplier = 1;
   state.driftGrace = 0;
+  state.driftDisplay = 0;
   state.handbrakeDown = false;
   state.boostTimer = 0;
   state.boostPower = 0;
@@ -685,6 +685,14 @@ function startDrive() {
   finishScreen.classList.remove('is-active');
   finishScreen.setAttribute('aria-hidden', 'true');
   showCountdownLabel('3');
+}
+
+function restartRun() {
+  if (!state.started) {
+    restartExperience();
+    return;
+  }
+  startDrive();
 }
 
 function restartExperience() {
@@ -961,7 +969,7 @@ function updatePhysics(delta) {
   } else if (state.driftChain > 0) {
     state.driftGrace -= delta;
     state.driftDisplay = Math.max(0, state.driftDisplay - delta);
-    if (state.driftGrace <= 0) {
+    if (state.boostTimer <= 0) {
       state.driftChain = 0;
       state.driftTime = 0;
       state.driftMultiplier = 1;
@@ -1026,11 +1034,14 @@ function updateUi() {
   surfaceHud.classList.toggle('is-offroad', !state.onRoad);
 
   const boosting = state.boostTimer > 0;
-  const showDrift = boosting || state.drifting || state.driftGrace > 0 || state.driftDisplay > 0;
+  const showDrift = state.drifting || (boosting && state.driftChain > 0);
+  const driftScale = THREE.MathUtils.clamp(0.78 + state.driftTime * 0.06, 0.78, 1.18);
   driftHud.classList.toggle('is-active', showDrift);
   driftHud.classList.toggle('is-boosting', boosting);
-  driftLabel.textContent = boosting ? 'Boost!' : 'Drift';
-  driftScore.textContent = boosting ? 'GO!' : Math.round(state.driftChain).toLocaleString();
+  driftHud.style.setProperty('--drift-scale', driftScale.toFixed(3));
+  if (state.driftChain > 0) {
+    driftScore.textContent = Math.round(state.driftChain).toLocaleString();
+  }
   document.body.classList.toggle('is-drifting', state.drifting);
   document.body.classList.toggle('is-boosting', boosting);
 }
@@ -1042,7 +1053,7 @@ function animateWorld(elapsed) {
 }
 
 startButton.addEventListener('click', startDrive);
-restartButton.addEventListener('click', restartExperience);
+restartButton.addEventListener('click', restartRun);
 startAgainButton.addEventListener('click', startDrive);
 
 addEventListener('keydown', (event) => {
@@ -1056,7 +1067,7 @@ addEventListener('keydown', (event) => {
     event.preventDefault();
   }
   input.keys.add(key);
-  if (key === 'r' && state.started && !state.finished) resetCar(false);
+  if (key === 'r' && state.started && !event.repeat) startDrive();
   if ((key === 'enter' || key === ' ') && !state.started) startDrive();
 });
 
