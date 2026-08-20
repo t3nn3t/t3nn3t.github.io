@@ -189,6 +189,77 @@ function createSign(title, subtitle, options = {}) {
   return group;
 }
 
+function createPortfolioBillboard() {
+  const group = new THREE.Group();
+  const width = 9.4;
+  const height = 4.25;
+  const signY = 5.15;
+
+  const billboardCanvas = document.createElement('canvas');
+  billboardCanvas.width = 1024;
+  billboardCanvas.height = 512;
+  const context = billboardCanvas.getContext('2d');
+  context.fillStyle = '#111936';
+  context.fillRect(0, 0, billboardCanvas.width, billboardCanvas.height);
+  context.fillStyle = '#43e7ff';
+  context.fillRect(0, 0, billboardCanvas.width, 76);
+  context.fillStyle = '#090b18';
+  context.font = '800 34px monospace';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillText('CAREER MILESTONE', billboardCanvas.width / 2, 39);
+  context.fillStyle = '#fff6d3';
+  context.font = '900 80px Arial, sans-serif';
+  context.fillText('FOUNDED BLUESIDE', billboardCanvas.width / 2, 165, 920);
+  context.fillStyle = '#bafc4f';
+  context.font = '700 43px monospace';
+  context.fillText('BOOTSTRAPPED LEGAL TECH', billboardCanvas.width / 2, 264, 900);
+  context.fillStyle = '#ffe45c';
+  context.font = '900 88px Arial, sans-serif';
+  context.fillText('$0  →  $50K ARR', billboardCanvas.width / 2, 390, 900);
+  context.strokeStyle = '#ff5a3d';
+  context.lineWidth = 18;
+  context.strokeRect(9, 9, billboardCanvas.width - 18, billboardCanvas.height - 18);
+
+  const texture = new THREE.CanvasTexture(billboardCanvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.NearestFilter;
+
+  group.add(
+    box(width + 0.55, height + 0.55, 0.34, palette.orange, 0, signY, 0),
+    box(width, height, 0.18, palette.charcoal, 0, signY, 0.2),
+    box(0.32, signY - 0.4, 0.32, palette.cream, -width * 0.3, (signY - 0.4) / 2, -0.06),
+    box(0.32, signY - 0.4, 0.32, palette.cream, width * 0.3, (signY - 0.4) / 2, -0.06),
+  );
+
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(width - 0.16, height - 0.16),
+    new THREE.MeshBasicMaterial({ map: texture }),
+  );
+  face.position.set(0, signY, 0.39);
+  group.add(face);
+
+  const bulbs = [];
+  const bulbMaterial = flatMaterial(palette.yellow, {
+    emissive: palette.yellow,
+    emissiveIntensity: 1.4,
+    roughness: 0.42,
+  });
+  for (let index = 0; index < 9; index += 1) {
+    [-1, 1].forEach((edge) => {
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.105, 6, 4), bulbMaterial.clone());
+      bulb.position.set(-width * 0.42 + index * width * 0.105, signY + edge * (height * 0.55), 0.46);
+      bulb.castShadow = false;
+      bulb.userData.phase = index + (edge > 0 ? 0 : 4);
+      bulbs.push(bulb);
+      group.add(bulb);
+    });
+  }
+  group.userData.billboardBulbs = bulbs;
+  return group;
+}
+
 const trackControlPoints = [
   new THREE.Vector3(0, 0, 42),
   new THREE.Vector3(0, 0, 4),
@@ -417,6 +488,7 @@ function createGarage() {
 
 function addWorldObjects() {
   placeAtTrack(createArch('START', 'SHIFT TO DRIFT'), 0.018, 0, 0, false);
+  placeAtTrack(createPortfolioBillboard(), 0.082, 1, 11.5);
   placeAtTrack(createBlueSide(), 0.13, 1, 15);
   placeAtTrack(createDonutShop(), 0.27, -1, 15);
   placeAtTrack(createResearchLab(), 0.42, 1, 15);
@@ -1058,6 +1130,13 @@ function updateUi() {
 function animateWorld(elapsed) {
   scene.traverse((object) => {
     if (object.userData.donut) object.userData.donut.rotation.z = Math.sin(elapsed * 0.5) * 0.08;
+    if (object.userData.billboardBulbs) {
+      object.userData.billboardBulbs.forEach((bulb) => {
+        const isLit = Math.floor(elapsed * 7 + bulb.userData.phase) % 4 < 2;
+        bulb.material.emissiveIntensity = isLit ? 3.6 : 0.55;
+        bulb.scale.setScalar(isLit ? 1.16 : 0.92);
+      });
+    }
   });
 }
 
