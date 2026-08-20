@@ -511,22 +511,6 @@ function addWorldObjects() {
   placeAtTrack(createCamp(), 0.71, 1, 16);
   placeAtTrack(createGarage(), 0.84, -1, 16);
   placeAtTrack(createArch('FINISH', 'CLOCK STOPS HERE', '#ff5d35'), FINISH_T, 0, 0, false);
-
-  const turns = [0.1, 0.2, 0.34, 0.49, 0.63, 0.77, 0.91];
-  turns.forEach((t, index) => {
-    const tangentBefore = trackCurve.getTangentAt(Math.max(0, t - 0.018));
-    const tangentAfter = trackCurve.getTangentAt(Math.min(1, t + 0.018));
-    const cross = tangentBefore.x * tangentAfter.z - tangentBefore.z * tangentAfter.x;
-    const direction = cross > 0 ? '<<<' : '>>>';
-    placeAtTrack(createSign(direction, 'DRIFT ZONE', {
-      width: 4.3,
-      height: 1.5,
-      signY: 2.5,
-      background: index % 2 ? '#ff5d35' : '#d9ff59',
-      foreground: index % 2 ? '#fff8e7' : '#151515',
-      backingColor: index % 2 ? palette.orange : palette.acid,
-    }), t, cross > 0 ? 1 : -1, 9.5);
-  });
 }
 
 function createCar() {
