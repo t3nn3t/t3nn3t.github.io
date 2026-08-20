@@ -209,14 +209,16 @@ function createPortfolioBillboard() {
   context.textBaseline = 'middle';
   context.fillText('CAREER MILESTONE', billboardCanvas.width / 2, 39);
   context.fillStyle = '#fff6d3';
-  context.font = '900 80px Arial, sans-serif';
-  context.fillText('FOUNDED BLUESIDE', billboardCanvas.width / 2, 165, 920);
+  context.font = '900 72px Arial, sans-serif';
+  context.fillText('FOUNDED BLUESIDE', billboardCanvas.width / 2, 151, 920);
   context.fillStyle = '#bafc4f';
-  context.font = '700 43px monospace';
-  context.fillText('BOOTSTRAPPED LEGAL TECH', billboardCanvas.width / 2, 264, 900);
+  context.font = '900 64px Arial, sans-serif';
+  context.fillText('BOOTSTRAPPED', billboardCanvas.width / 2, 238, 920);
+  context.font = '900 58px Arial, sans-serif';
+  context.fillText('LEGAL TECH STARTUP', billboardCanvas.width / 2, 316, 920);
   context.fillStyle = '#ffe45c';
-  context.font = '900 88px Arial, sans-serif';
-  context.fillText('$0  →  $50K ARR', billboardCanvas.width / 2, 390, 900);
+  context.font = '900 78px Arial, sans-serif';
+  context.fillText('$0  →  $50K ARR', billboardCanvas.width / 2, 416, 900);
   context.strokeStyle = '#ff5a3d';
   context.lineWidth = 18;
   context.strokeRect(9, 9, billboardCanvas.width - 18, billboardCanvas.height - 18);
@@ -488,7 +490,7 @@ function createGarage() {
 
 function addWorldObjects() {
   placeAtTrack(createArch('START', 'SHIFT TO DRIFT'), 0.018, 0, 0, false);
-  placeAtTrack(createPortfolioBillboard(), 0.082, 1, 11.5);
+  placeAtTrack(createPortfolioBillboard(), 0.145, -1, 11.5);
   placeAtTrack(createBlueSide(), 0.13, 1, 15);
   placeAtTrack(createDonutShop(), 0.27, -1, 15);
   placeAtTrack(createResearchLab(), 0.42, 1, 15);
