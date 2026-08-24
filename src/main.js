@@ -191,7 +191,7 @@ function createSign(title, subtitle, options = {}) {
   return group;
 }
 
-function createPortfolioBillboard() {
+function createPortfolioBillboard({ header, lines, borderColor = '#ff5a3d' }) {
   const group = new THREE.Group();
   const width = 9.4;
   const height = 4.25;
@@ -209,19 +209,14 @@ function createPortfolioBillboard() {
   context.font = '800 34px monospace';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
-  context.fillText('CAREER MILESTONE', billboardCanvas.width / 2, 39);
-  context.fillStyle = '#fff6d3';
-  context.font = '900 72px Arial, sans-serif';
-  context.fillText('FOUNDED BLUESIDE', billboardCanvas.width / 2, 151, 920);
-  context.fillStyle = '#bafc4f';
-  context.font = '900 64px Arial, sans-serif';
-  context.fillText('BOOTSTRAPPED', billboardCanvas.width / 2, 238, 920);
-  context.font = '900 58px Arial, sans-serif';
-  context.fillText('LEGAL TECH STARTUP', billboardCanvas.width / 2, 316, 920);
-  context.fillStyle = '#ffe45c';
-  context.font = '900 78px Arial, sans-serif';
-  context.fillText('$0  →  $50K ARR', billboardCanvas.width / 2, 416, 900);
-  context.strokeStyle = '#ff5a3d';
+  context.fillText(header.toUpperCase(), billboardCanvas.width / 2, 39, 920);
+  const linePositions = [151, 238, 316, 416];
+  lines.forEach(({ text, color, size }, index) => {
+    context.fillStyle = color;
+    context.font = `900 ${size}px Arial, sans-serif`;
+    context.fillText(text.toUpperCase(), billboardCanvas.width / 2, linePositions[index], 920);
+  });
+  context.strokeStyle = borderColor;
   context.lineWidth = 18;
   context.strokeRect(9, 9, billboardCanvas.width - 18, billboardCanvas.height - 18);
 
@@ -262,6 +257,21 @@ function createPortfolioBillboard() {
   }
   group.userData.billboardBulbs = bulbs;
   return group;
+}
+
+function placeMilestoneBillboard(config, t, side) {
+  const billboard = createPortfolioBillboard(config);
+  billboard.scale.setScalar(2.64);
+  placeAtTrack(billboard, t, side, 19.2);
+  billboard.position.y = -5.6;
+
+  const tangent = trackCurve.getTangentAt(t).normalize();
+  const towardRoad = trackRight(tangent).multiplyScalar(-side);
+  const towardDrivers = tangent.clone()
+    .multiplyScalar(-1)
+    .addScaledVector(towardRoad, 0.52)
+    .normalize();
+  billboard.rotation.y = Math.atan2(towardDrivers.x, towardDrivers.z);
 }
 
 const trackControlPoints = [
@@ -492,22 +502,63 @@ function createGarage() {
 
 function addWorldObjects() {
   placeAtTrack(createArch('START', 'SHIFT TO DRIFT'), 0.018, 0, 0, false);
-  const blueSideBillboardT = 0.145;
-  const blueSideBillboard = createPortfolioBillboard();
-  blueSideBillboard.scale.setScalar(2.64);
-  placeAtTrack(blueSideBillboard, blueSideBillboardT, -1, 19.2);
-  blueSideBillboard.position.y = -5.6;
-  const billboardTangent = trackCurve.getTangentAt(blueSideBillboardT).normalize();
-  const billboardTowardRoad = trackRight(billboardTangent);
-  const billboardTowardDrivers = billboardTangent.clone()
-    .multiplyScalar(-1)
-    .addScaledVector(billboardTowardRoad, 0.52)
-    .normalize();
-  blueSideBillboard.rotation.y = Math.atan2(billboardTowardDrivers.x, billboardTowardDrivers.z);
+  placeMilestoneBillboard({
+    header: 'Career milestone',
+    lines: [
+      { text: 'Founded BlueSide', color: '#fff6d3', size: 72 },
+      { text: 'Bootstrapped', color: '#bafc4f', size: 64 },
+      { text: 'Legal tech startup', color: '#bafc4f', size: 58 },
+      { text: '$0  →  $50K ARR', color: '#ffe45c', size: 78 },
+    ],
+  }, 0.145, -1);
   placeAtTrack(createBlueSide(), 0.13, 1, 15);
+
+  placeMilestoneBillboard({
+    header: 'Campaign win',
+    borderColor: '#ff4fa7',
+    lines: [
+      { text: 'Donuts for law firms', color: '#fff6d3', size: 67 },
+      { text: 'In-person campaign', color: '#ff9ccc', size: 55 },
+      { text: '$13K ARR', color: '#bafc4f', size: 82 },
+      { text: '100K+ impressions', color: '#ffe45c', size: 67 },
+    ],
+  }, 0.285, 1);
   placeAtTrack(createDonutShop(), 0.27, -1, 15);
+
+  placeMilestoneBillboard({
+    header: 'AI research',
+    borderColor: '#43e7ff',
+    lines: [
+      { text: 'Research assistant', color: '#fff6d3', size: 67 },
+      { text: 'University of Bath', color: '#43e7ff', size: 62 },
+      { text: 'LLM psychometrics', color: '#bafc4f', size: 64 },
+      { text: 'Reproducible platform', color: '#ffe45c', size: 57 },
+    ],
+  }, 0.435, -1);
   placeAtTrack(createResearchLab(), 0.42, 1, 15);
+
+  placeMilestoneBillboard({
+    header: 'Year in industry',
+    borderColor: '#bafc4f',
+    lines: [
+      { text: 'Wealth tech at UBS', color: '#fff6d3', size: 69 },
+      { text: 'Azure performance', color: '#43e7ff', size: 61 },
+      { text: 'Opened Digital Week', color: '#bafc4f', size: 59 },
+      { text: '~5,000 global viewers', color: '#ffe45c', size: 58 },
+    ],
+  }, 0.585, 1);
   placeAtTrack(createTower(), 0.57, -1, 17);
+
+  placeMilestoneBillboard({
+    header: 'Community founded',
+    borderColor: '#ff5a3d',
+    lines: [
+      { text: 'builders.', color: '#fff6d3', size: 86 },
+      { text: 'London founders', color: '#ff9ccc', size: 66 },
+      { text: '100+ members', color: '#bafc4f', size: 78 },
+      { text: 'Coworking + dinners', color: '#ffe45c', size: 61 },
+    ],
+  }, 0.725, -1);
   placeAtTrack(createCamp(), 0.71, 1, 16);
   placeAtTrack(createGarage(), 0.84, -1, 16);
   placeAtTrack(createArch('FINISH', 'CLOCK STOPS HERE', '#ff5d35'), FINISH_T, 0, 0, false);
