@@ -20,6 +20,17 @@ const finishCopy = document.querySelector('#finish-copy');
 const finishEmail = document.querySelector('#finish-email');
 const startAgainButton = document.querySelector('#start-again');
 const finishActions = document.querySelector('.finish-actions');
+const scoreEntry = document.querySelector('#score-entry');
+const scoreName = document.querySelector('#score-name');
+const scoreSubmit = document.querySelector('#score-submit');
+const scoreStatus = document.querySelector('#score-status');
+const finishScoreboardList = document.querySelector('#finish-scoreboard-list');
+const finishScoreboardMessage = document.querySelector('#finish-scoreboard-message');
+const scoreboardOpenButton = document.querySelector('#scoreboard-open');
+const scoreboardScreen = document.querySelector('#scoreboard-screen');
+const scoreboardCloseButton = document.querySelector('#scoreboard-close');
+const scoreboardList = document.querySelector('#scoreboard-list');
+const scoreboardMessage = document.querySelector('#scoreboard-message');
 const milestoneScreen = document.querySelector('#milestone-screen');
 const milestoneCheckpoint = document.querySelector('#milestone-checkpoint');
 const milestoneTitle = document.querySelector('#milestone-title');
@@ -29,6 +40,7 @@ const milestoneLink = document.querySelector('#milestone-link');
 const milestoneContinue = document.querySelector('#milestone-continue');
 const milestoneActions = document.querySelector('.milestone-tooltip__actions');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const scoreboardApiUrl = document.querySelector('meta[name="scoreboard-api-url"]')?.content.trim().replace(/\/$/, '') ?? '';
 
 const palette = {
   cream: 0xfff8e7,
@@ -51,6 +63,7 @@ const ROAD_HALF_WIDTH = 5.6;
 const TRACK_SAMPLE_COUNT = 720;
 const MAX_SPEED = 38;
 const MAX_REVERSE_SPEED = 11;
+const VERIFIED_CHECKPOINTS = [0.25, 0.5, 0.75];
 const REVERSE_ENGAGE_DELAY = 0.18;
 const DRIFT_BOOST_SCALE = 1.25;
 const CAR_COLLISION_RADIUS = 1.25;
@@ -843,6 +856,15 @@ const state = {
   velocityBeforePopup: new THREE.Vector3(),
   boostTimerBeforePopup: 0,
   seenMilestones: new Set(),
+  scoreboardOpen: false,
+  scoreSubmitted: false,
+  raceSessionId: '',
+  raceSessionPromise: null,
+  checkpointPromise: Promise.resolve(),
+  verificationPromise: null,
+  verificationFailed: false,
+  nextVerificationCheckpoint: 0,
+  verificationGeneration: 0,
 };
 
 function nearestTrackInfo(position) {
@@ -998,6 +1020,7 @@ function updateMilestonePopups() {
 function startDrive({ popups = true } = {}) {
   input.touch.clear();
   closeMilestone({ resumeTimer: false });
+  closeScoreboard({ resumeTimer: false });
   state.started = true;
   state.finished = false;
   state.popupsEnabled = popups;
@@ -1005,6 +1028,14 @@ function startDrive({ popups = true } = {}) {
   state.timerRunning = false;
   state.runTime = 0;
   state.finalTime = 0;
+  state.scoreSubmitted = false;
+  state.raceSessionId = '';
+  state.raceSessionPromise = null;
+  state.checkpointPromise = Promise.resolve();
+  state.verificationPromise = null;
+  state.verificationFailed = false;
+  state.nextVerificationCheckpoint = 0;
+  state.verificationGeneration += 1;
   state.countdown = 2.15;
   resetCar(true, true);
   hero.classList.add('is-hidden');
@@ -1013,6 +1044,7 @@ function startDrive({ popups = true } = {}) {
   gameUi.setAttribute('aria-hidden', 'false');
   finishScreen.classList.remove('is-active');
   finishScreen.setAttribute('aria-hidden', 'true');
+  scoreboardOpenButton.disabled = !popups;
   showCountdownLabel('3');
 }
 
@@ -1034,6 +1066,7 @@ function restartExperience() {
   input.keys.clear();
   input.touch.clear();
   closeMilestone({ resumeTimer: false });
+  closeScoreboard({ resumeTimer: false });
   resetCar(true, true);
   hero.classList.remove('is-hidden');
   document.body.classList.remove('is-playing');
@@ -1041,6 +1074,7 @@ function restartExperience() {
   gameUi.setAttribute('aria-hidden', 'true');
   finishScreen.classList.remove('is-active');
   finishScreen.setAttribute('aria-hidden', 'true');
+  scoreboardOpenButton.disabled = false;
   showCountdownLabel('');
   document.body.classList.remove('is-drifting');
   document.body.classList.remove('is-boosting');
@@ -1108,7 +1142,10 @@ function updateCountdown(delta) {
   else if (state.countdown > 0.62) showCountdownLabel('1');
   else if (state.countdown > 0.12) showCountdownLabel('GO');
   else showCountdownLabel('');
-  if (waitingForGo && state.countdown <= 0.62 && !state.finished) state.timerRunning = true;
+  if (waitingForGo && state.countdown <= 0.62 && !state.finished) {
+    state.timerRunning = true;
+    beginVerifiedRun();
+  }
 }
 
 function formatRaceTime(milliseconds) {
@@ -1117,6 +1154,188 @@ function formatRaceTime(milliseconds) {
   const seconds = Math.floor((totalMilliseconds % 60000) / 1000);
   const millis = totalMilliseconds % 1000;
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+}
+
+function renderScores(scores, list = scoreboardList, message = scoreboardMessage) {
+  list.replaceChildren(...scores.map((score, index) => {
+    const item = document.createElement('li');
+    const rank = document.createElement('span');
+    const name = document.createElement('strong');
+    const time = document.createElement('time');
+    rank.textContent = String(index + 1).padStart(2, '0');
+    name.textContent = score.name;
+    time.textContent = formatRaceTime(score.timeMs);
+    item.append(rank, name, time);
+    return item;
+  }));
+  message.hidden = scores.length > 0;
+  if (scores.length === 0) message.textContent = 'No times yet. Take pole position.';
+}
+
+async function loadScores(list = scoreboardList, message = scoreboardMessage, limit = 5) {
+  list.replaceChildren();
+  message.hidden = false;
+  if (!scoreboardApiUrl) {
+    message.textContent = 'High scores are being connected.';
+    return;
+  }
+
+  message.textContent = 'Loading scores…';
+  try {
+    const response = await fetch(`${scoreboardApiUrl}/scores?limit=${limit}`, { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error('Leaderboard request failed');
+    const payload = await response.json();
+    renderScores(Array.isArray(payload.scores) ? payload.scores : [], list, message);
+  } catch {
+    message.textContent = 'Scores are offline. Try again shortly.';
+  }
+}
+
+async function requestScoreboard(path, options = {}) {
+  const response = await fetch(`${scoreboardApiUrl}${path}`, options);
+  let payload = {};
+  try { payload = await response.json(); } catch { /* The status still provides a useful fallback error. */ }
+  if (!response.ok) throw new Error(payload.error || 'Race verification is unavailable.');
+  return payload;
+}
+
+function beginVerifiedRun() {
+  if (state.popupsEnabled || state.raceSessionPromise) return;
+  if (!scoreboardApiUrl) {
+    state.verificationFailed = true;
+    return;
+  }
+
+  const generation = state.verificationGeneration;
+  state.raceSessionPromise = requestScoreboard('/runs', {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+  }).then((payload) => {
+    if (generation !== state.verificationGeneration) return '';
+    state.raceSessionId = payload.runId;
+    return payload.runId;
+  }).catch(() => {
+    if (generation === state.verificationGeneration) state.verificationFailed = true;
+    return '';
+  });
+}
+
+function queueRaceCheckpoints(progress = state.progress) {
+  if (state.popupsEnabled || !state.raceSessionPromise) return;
+
+  while (
+    state.nextVerificationCheckpoint < VERIFIED_CHECKPOINTS.length
+    && progress >= VERIFIED_CHECKPOINTS[state.nextVerificationCheckpoint]
+  ) {
+    const checkpoint = state.nextVerificationCheckpoint + 1;
+    const generation = state.verificationGeneration;
+    state.nextVerificationCheckpoint = checkpoint;
+    state.checkpointPromise = state.checkpointPromise.then(async () => {
+      if (generation !== state.verificationGeneration || state.verificationFailed) return;
+      const runId = await state.raceSessionPromise;
+      if (!runId) throw new Error('Race session was not created.');
+      await requestScoreboard(`/runs/${runId}/checkpoints`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ checkpoint }),
+      });
+    }).catch(() => {
+      if (generation === state.verificationGeneration) state.verificationFailed = true;
+    });
+  }
+}
+
+function completeVerifiedRun() {
+  queueRaceCheckpoints(1);
+  const generation = state.verificationGeneration;
+  state.verificationPromise = state.checkpointPromise.then(async () => {
+    if (generation !== state.verificationGeneration || state.verificationFailed) return '';
+    const runId = await state.raceSessionPromise;
+    if (!runId) return '';
+    await requestScoreboard(`/runs/${runId}/finish`, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+    });
+    return runId;
+  }).catch(() => {
+    if (generation === state.verificationGeneration) state.verificationFailed = true;
+    return '';
+  });
+  return state.verificationPromise;
+}
+
+function openScoreboard() {
+  if (state.scoreboardOpen) return;
+  if (state.started && !state.finished && !state.popupsEnabled) return;
+  state.scoreboardOpen = true;
+  if (state.started && !state.finished && !state.popupOpen) {
+    state.timerWasRunning = state.timerRunning;
+    state.timerRunning = false;
+    state.velocityBeforePopup.copy(state.velocity);
+    state.boostTimerBeforePopup = state.boostTimer;
+    state.velocity.set(0, 0, 0);
+    state.boostTimer = 0;
+  }
+  input.keys.clear();
+  input.touch.clear();
+  scoreboardScreen.classList.add('is-active');
+  scoreboardScreen.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('is-reading');
+  loadScores(scoreboardList, scoreboardMessage, 10);
+  scoreboardCloseButton.focus({ preventScroll: true });
+}
+
+function closeScoreboard({ resumeTimer = true } = {}) {
+  if (!state.scoreboardOpen) return;
+  state.scoreboardOpen = false;
+  scoreboardScreen.classList.remove('is-active');
+  scoreboardScreen.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('is-reading');
+  if (resumeTimer && state.started && !state.finished && !state.popupOpen) {
+    state.velocity.copy(state.velocityBeforePopup);
+    state.boostTimer = state.boostTimerBeforePopup;
+    if (state.timerWasRunning) state.timerRunning = true;
+  }
+  state.timerWasRunning = false;
+  state.velocityBeforePopup.set(0, 0, 0);
+  state.boostTimerBeforePopup = 0;
+  input.keys.clear();
+  input.touch.clear();
+}
+
+async function submitScore(event) {
+  event.preventDefault();
+  if (!scoreboardApiUrl || state.scoreSubmitted || !state.finished || state.finalTime < 25_000) return;
+
+  const name = scoreName.value.trim().toUpperCase();
+  if (!/^[A-Z0-9]{3}$/.test(name)) {
+    scoreStatus.textContent = 'Use exactly 3 letters or numbers.';
+    scoreName.focus();
+    return;
+  }
+
+  scoreSubmit.disabled = true;
+  scoreStatus.textContent = 'Saving time…';
+  try {
+    const runId = await state.verificationPromise;
+    if (!runId) throw new Error('This run could not be verified.');
+    const response = await fetch(`${scoreboardApiUrl}/scores`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ name, timeMs: Math.floor(state.finalTime), runId }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'Could not save this time.');
+    state.scoreSubmitted = true;
+    scoreStatus.textContent = 'Time saved!';
+    try { localStorage.setItem('jt-score-name', name); } catch { /* Storage can be unavailable in private browsing. */ }
+    const scores = Array.isArray(payload.scores) ? payload.scores : [];
+    renderScores(scores, finishScoreboardList, finishScoreboardMessage);
+    renderScores(scores);
+  } catch (error) {
+    scoreStatus.textContent = error instanceof Error ? error.message : 'Could not save this time.';
+    scoreSubmit.disabled = false;
+  }
 }
 
 function updateRaceClock(delta) {
@@ -1134,7 +1353,31 @@ function finishRun() {
   input.touch.clear();
 
   const formattedTime = formatRaceTime(state.finalTime);
+  const canSaveScore = !state.popupsEnabled;
+  const verificationPromise = canSaveScore ? completeVerifiedRun() : null;
   finishTime.textContent = formattedTime;
+  scoreEntry.reset();
+  try { scoreName.value = localStorage.getItem('jt-score-name') ?? ''; } catch { scoreName.value = ''; }
+  scoreEntry.hidden = !canSaveScore;
+  scoreSubmit.disabled = true;
+  scoreName.disabled = true;
+  if (!scoreboardApiUrl) {
+    scoreStatus.textContent = 'Leaderboard setup is not live yet.';
+  } else if (canSaveScore && state.finalTime < 25_000) {
+    scoreStatus.textContent = 'Times under 25 seconds cannot be submitted.';
+  } else if (canSaveScore) {
+    scoreStatus.textContent = 'Verifying run…';
+    verificationPromise.then((runId) => {
+      if (!runId) {
+        scoreStatus.textContent = 'Run could not be verified. Start a new time trial.';
+        return;
+      }
+      scoreName.disabled = false;
+      scoreSubmit.disabled = false;
+      scoreStatus.textContent = 'Verified — add this run to the top 5.';
+    });
+  }
+  loadScores(finishScoreboardList, finishScoreboardMessage);
   const emailUnlocked = !state.popupsEnabled && state.finalTime < 40000;
   if (emailUnlocked) {
     finishCopy.textContent = 'Fast enough to reach the inbox.';
@@ -1147,13 +1390,13 @@ function finishRun() {
   finishActions.classList.toggle('is-single-action', !emailUnlocked);
   const subject = `Interested in having a chat — ${formattedTime} lap`;
   const body = `Hi Jake,\n\nI'm interested in having a chat.\n\nI also clocked a ${formattedTime} on Jake's Road, which surely earns me pole position in your inbox.\n\nBest,`;
-  finishEmail.href = `mailto:jaketennet@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   finishScreen.classList.add('is-active');
   finishScreen.setAttribute('aria-hidden', 'false');
+  scoreboardOpenButton.disabled = false;
 }
 
 function updatePhysics(delta) {
-  if (!state.started || state.countdown > 0.62 || state.finished || state.popupOpen) return;
+  if (!state.started || state.countdown > 0.62 || state.finished || state.popupOpen || state.scoreboardOpen) return;
 
   const throttle = controlActive('throttle');
   const brake = controlActive('brake');
@@ -1456,9 +1699,24 @@ startButton.addEventListener('click', () => startDrive({ popups: true }));
 restartButton.addEventListener('click', restartRun);
 startAgainButton.addEventListener('click', () => startDrive({ popups: false }));
 milestoneContinue.addEventListener('click', () => closeMilestone());
+scoreEntry.addEventListener('submit', submitScore);
+scoreName.addEventListener('input', () => {
+  scoreName.value = scoreName.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
+});
+scoreboardOpenButton.addEventListener('click', openScoreboard);
+scoreboardCloseButton.addEventListener('click', () => closeScoreboard());
+scoreboardScreen.addEventListener('click', (event) => {
+  if (event.target === scoreboardScreen) closeScoreboard();
+});
 
 addEventListener('keydown', (event) => {
   const key = event.key.toLowerCase();
+  const isUsingScoreForm = event.target instanceof Element && scoreEntry.contains(event.target);
+  if (state.scoreboardOpen) {
+    if (key === 'escape') closeScoreboard();
+    return;
+  }
+  if (isUsingScoreForm) return;
   if (state.popupOpen) {
     if (key === ' ') {
       event.preventDefault();
@@ -1481,6 +1739,11 @@ addEventListener('keydown', (event) => {
   }
   input.keys.add(key);
   if (key === 'r' && state.started && !event.repeat) startDrive({ popups: state.popupsEnabled });
+  if (key === 'p' && !state.started) {
+    event.preventDefault();
+    startDrive({ popups: false });
+    return;
+  }
   if ((key === 'enter' || key === ' ') && !state.started) startDrive({ popups: true });
 });
 
@@ -1515,6 +1778,7 @@ function animate() {
   updateRaceClock(delta);
   updateCountdown(delta);
   updatePhysics(delta);
+  queueRaceCheckpoints();
   updateMilestonePopups();
   updateParticles(delta);
   updateCar(delta, elapsed);

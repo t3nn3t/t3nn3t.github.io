@@ -94,7 +94,8 @@ a { font: inherit; }
 button { color: inherit; }
 
 button:focus-visible,
-a:focus-visible {
+a:focus-visible,
+input:focus-visible {
   outline: 4px solid var(--yellow);
   outline-offset: 5px;
 }
@@ -165,18 +166,30 @@ body:not(.is-playing) .topbar {
 
 .topbar nav { display: flex; gap: 1rem; }
 
-.topbar a {
+.topbar a,
+.topbar button {
+  padding: 0;
+  border: 0;
   color: var(--acid);
+  background: transparent;
   font-family: var(--pixel-font);
   font-size: clamp(0.42rem, 0.8vw, 0.56rem);
   line-height: 1.5;
   text-decoration: none;
   text-transform: uppercase;
+  cursor: pointer;
 }
 
-.topbar a:hover {
+.topbar a:hover,
+.topbar button:hover {
   color: var(--yellow);
   animation: text-blink 360ms steps(2, end) infinite;
+}
+
+.topbar button:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  animation: none;
 }
 
 .hero {
@@ -740,6 +753,8 @@ body.is-reading .mobile-controls { pointer-events: none; }
 .finish-panel {
   position: relative;
   width: min(38rem, 100%);
+  max-height: calc(100svh - 3rem);
+  overflow-y: auto;
   padding: clamp(1.6rem, 5vw, 3rem);
   border: 6px double var(--cream);
   color: var(--cream);
@@ -792,6 +807,101 @@ body.is-reading .mobile-controls { pointer-events: none; }
   margin: 1.3rem 0 0;
   color: var(--cream);
   font-size: 1.5rem;
+}
+
+.finish-leaderboard {
+  margin-top: 1.25rem;
+  border: 3px solid var(--cream);
+  background: var(--ink);
+  text-align: left;
+}
+
+.finish-leaderboard__header {
+  display: flex;
+  padding: 0.6rem 0.75rem;
+  align-items: center;
+  justify-content: flex-start;
+  border-bottom: 3px solid var(--cream);
+  color: var(--ink);
+  background: var(--yellow);
+  font-family: var(--pixel-font);
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.finish-leaderboard__header h3 {
+  margin: 0;
+  font-size: 0.52rem;
+  font-weight: 400;
+}
+
+.score-entry {
+  margin-top: 0;
+  padding: 1rem;
+  border: 3px solid var(--cyan);
+  border-top: 0;
+  background: var(--ink);
+  text-align: left;
+}
+
+.score-entry[hidden] { display: none; }
+
+.score-entry label {
+  display: block;
+  margin-bottom: 0.7rem;
+  color: var(--yellow);
+  font-family: var(--pixel-font);
+  font-size: 0.46rem;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.score-entry__controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.7rem;
+}
+
+.score-entry input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  border: 4px solid var(--cream);
+  border-radius: 0;
+  color: var(--yellow);
+  background: var(--navy);
+  font-family: var(--pixel-font);
+  font-size: 1.15rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.score-entry button {
+  padding: 0.6rem 0.9rem;
+  border: 4px solid var(--cream);
+  border-radius: 0;
+  color: var(--ink);
+  background: var(--acid);
+  font-family: var(--pixel-font);
+  font-size: 0.42rem;
+  line-height: 1.5;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.score-entry button:disabled,
+.score-entry input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.score-entry > p {
+  min-height: 1.2em;
+  margin: 0.7rem 0 0;
+  color: var(--cream);
+  font-size: 1rem;
+  line-height: 1.2;
 }
 
 .finish-actions {
@@ -848,6 +958,116 @@ body.is-reading .mobile-controls { pointer-events: none; }
   transform: translate(2px, 2px);
 }
 
+.scoreboard-screen {
+  position: fixed;
+  z-index: 28;
+  inset: 0;
+  display: grid;
+  padding: 1.25rem;
+  background: rgba(9, 11, 24, 0.9);
+  place-items: center;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms steps(3, end), visibility 140ms;
+}
+
+.scoreboard-screen.is-active {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.scoreboard-panel {
+  width: min(36rem, 100%);
+  max-height: calc(100svh - 2.5rem);
+  overflow-y: auto;
+  border: 5px solid var(--cream);
+  color: var(--cream);
+  background: var(--navy);
+  box-shadow: 8px 8px 0 var(--cyan), 14px 14px 0 var(--purple);
+}
+
+.scoreboard-panel__header {
+  display: flex;
+  padding: 1.2rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 4px solid var(--cream);
+  background: var(--ink);
+}
+
+.scoreboard-panel h2 {
+  margin: 0;
+  color: var(--yellow);
+  font-family: var(--pixel-font);
+  font-size: clamp(1rem, 4vw, 1.75rem);
+  font-weight: 400;
+  line-height: 1.3;
+  text-shadow: 3px 3px 0 var(--orange);
+  text-transform: uppercase;
+}
+
+#scoreboard-close {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 3px solid var(--cream);
+  border-radius: 0;
+  color: var(--cream);
+  background: var(--purple);
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.scoreboard-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scoreboard-list li {
+  display: grid;
+  padding: 0.8rem 1.1rem;
+  border-bottom: 2px solid rgba(255, 246, 211, 0.25);
+  grid-template-columns: 3rem 1fr auto;
+  gap: 0.7rem;
+  align-items: center;
+  font-family: var(--pixel-font);
+  font-size: clamp(0.46rem, 1.4vw, 0.65rem);
+  line-height: 1.5;
+}
+
+.scoreboard-list li:nth-child(1) { color: var(--yellow); background: rgba(255, 228, 92, 0.08); }
+.scoreboard-list li:nth-child(2) { color: var(--cyan); }
+.scoreboard-list li:nth-child(3) { color: var(--pink); }
+.scoreboard-list li span { opacity: 0.6; }
+.scoreboard-list li time { font-family: 'VT323', monospace; font-size: 1.55rem; }
+
+.scoreboard-list--compact li {
+  padding: 0.42rem 0.75rem;
+  grid-template-columns: 2.4rem 1fr auto;
+  font-size: clamp(0.38rem, 1vw, 0.5rem);
+}
+
+.scoreboard-list--compact li time { font-size: 1.2rem; }
+
+.finish-leaderboard .scoreboard-message {
+  padding: 1rem 0.75rem;
+  font-size: 1.05rem;
+}
+
+.scoreboard-message {
+  margin: 0;
+  padding: 2rem 1.2rem;
+  color: var(--cream);
+  font-size: 1.3rem;
+  text-align: center;
+}
+
+.scoreboard-message[hidden] { display: none; }
+
 .noscript {
   position: fixed;
   z-index: 30;
@@ -898,7 +1118,8 @@ body.is-reading .mobile-controls { pointer-events: none; }
   }
 
   .wordmark { font-size: 0.48rem; }
-  .topbar a { font-size: 0.36rem; }
+  .topbar a,
+  .topbar button { font-size: 0.36rem; }
 
   .hero {
     width: 100%;
@@ -1006,6 +1227,8 @@ body.is-reading .mobile-controls { pointer-events: none; }
   }
 
   .finish-actions { grid-template-columns: 1fr; }
+  .finish-panel { padding: 1.25rem; }
+  .score-entry__controls { grid-template-columns: 1fr; }
 
   .milestone-screen {
     padding: 1rem;

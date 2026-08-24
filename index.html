@@ -12,6 +12,7 @@
     <meta property="og:image" content="https://jaketennet.com/og.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://jaketennet.com/og.png" />
+    <meta name="scoreboard-api-url" content="https://jt-scoreboard.jaketennet-com.workers.dev" />
     <title>Jake Tennet — Drive</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23ff5d35'/%3E%3Cpath d='M16 15h12v25c0 9-5 13-14 13l-2-10c3 0 4-1 4-4V15Zm17 0h21v10h-9v28H33V15Z' fill='%23fff8e7'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="/src/style.css" />
@@ -62,7 +63,7 @@
       <header class="topbar">
       <button class="wordmark" type="button" id="restart" aria-label="Restart drive"><span aria-hidden="true">★</span> JT ARCADE</button>
       <nav aria-label="Portfolio links">
-        <a href="https://github.com/t3nn3t" target="_blank" rel="noreferrer">High scores: GitHub ↗</a>
+        <button class="scoreboard-open" id="scoreboard-open" type="button">High scores</button>
       </nav>
       </header>
 
@@ -76,7 +77,7 @@
           <button class="start-button" id="start-drive" type="button">
             <span aria-hidden="true">▶</span> Press space
           </button>
-          <p class="hero__controls">WASD / arrows · Shift to drift</p>
+          <p class="hero__controls">WASD / arrows · Shift to drift<br />P for time trial · no pop ups</p>
           <p class="hero__coin" aria-hidden="true">1 player · © 2026 JT Games · 1 credit</p>
         </div>
       </section>
@@ -156,10 +157,36 @@
           <p class="finish-panel__kicker">Stage clear!</p>
           <h2 id="finish-title"><span id="finish-time">00:00.000</span></h2>
           <p id="finish-copy">Fast enough to reach the inbox.</p>
+          <section class="finish-leaderboard" aria-labelledby="finish-leaderboard-title">
+            <div class="finish-leaderboard__header">
+              <h3 id="finish-leaderboard-title">Top 5 times</h3>
+            </div>
+            <ol class="scoreboard-list scoreboard-list--compact" id="finish-scoreboard-list" aria-live="polite"></ol>
+            <p class="scoreboard-message" id="finish-scoreboard-message">Loading scores…</p>
+          </section>
+          <form class="score-entry" id="score-entry">
+            <label for="score-name">Enter initials</label>
+            <div class="score-entry__controls">
+              <input id="score-name" name="name" type="text" maxlength="3" pattern="[A-Za-z0-9]{3}" inputmode="text" autocomplete="nickname" aria-describedby="score-status" placeholder="AAA" required />
+              <button id="score-submit" type="submit">Save time</button>
+            </div>
+            <p id="score-status" aria-live="polite"></p>
+          </form>
           <div class="finish-actions">
             <a id="finish-email" href="mailto:jaketennet@gmail.com">Send Jake an email</a>
             <button id="start-again" type="button"><span>Play again for scores</span><span>(no pop ups)</span></button>
           </div>
+        </div>
+      </section>
+
+      <section class="scoreboard-screen" id="scoreboard-screen" aria-hidden="true">
+        <div class="scoreboard-panel" role="dialog" aria-modal="true" aria-labelledby="scoreboard-title">
+          <div class="scoreboard-panel__header">
+            <h2 id="scoreboard-title">Top 10 times</h2>
+            <button id="scoreboard-close" type="button" aria-label="Close high scores">×</button>
+          </div>
+          <ol class="scoreboard-list" id="scoreboard-list" aria-live="polite"></ol>
+          <p class="scoreboard-message" id="scoreboard-message">Loading scores…</p>
         </div>
       </section>
       </main>

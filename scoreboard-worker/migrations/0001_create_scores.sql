@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS scores (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL CHECK(length(name) = 3),
+  time_ms INTEGER NOT NULL CHECK(time_ms BETWEEN 10000 AND 600000),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS scores_fastest
+  ON scores (time_ms ASC, created_at ASC);
