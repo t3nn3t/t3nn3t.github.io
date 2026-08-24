@@ -11,13 +11,23 @@ const routeFill = document.querySelector('#route-fill');
 const routePercent = document.querySelector('#route-percent');
 const timerValue = document.querySelector('#timer-value');
 const driftHud = document.querySelector('#drift-hud');
-const driftScore = document.querySelector('#drift-score');
+const driftDurationValue = document.querySelector('#drift-duration');
 const surfaceHud = document.querySelector('#surface-hud');
 const countdownElement = document.querySelector('#countdown');
 const finishScreen = document.querySelector('#finish-screen');
 const finishTime = document.querySelector('#finish-time');
+const finishCopy = document.querySelector('#finish-copy');
 const finishEmail = document.querySelector('#finish-email');
 const startAgainButton = document.querySelector('#start-again');
+const finishActions = document.querySelector('.finish-actions');
+const milestoneScreen = document.querySelector('#milestone-screen');
+const milestoneCheckpoint = document.querySelector('#milestone-checkpoint');
+const milestoneTitle = document.querySelector('#milestone-title');
+const milestoneCopy = document.querySelector('#milestone-copy');
+const milestoneStats = document.querySelector('#milestone-stats');
+const milestoneLink = document.querySelector('#milestone-link');
+const milestoneContinue = document.querySelector('#milestone-continue');
+const milestoneActions = document.querySelector('.milestone-tooltip__actions');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const palette = {
@@ -43,6 +53,50 @@ const MAX_SPEED = 38;
 const MAX_REVERSE_SPEED = 11;
 const REVERSE_ENGAGE_DELAY = 0.18;
 const DRIFT_BOOST_SCALE = 1.25;
+const CAR_COLLISION_RADIUS = 1.25;
+const worldColliders = [];
+
+const milestones = [
+  {
+    id: 'blueside',
+    trigger: 0.12,
+    title: 'BlueSide',
+    copy: 'Jake co-founded BlueSide and built the production AI platform used by 100+ solicitors across 10 law firms. Its parallel LLM/OCR pipeline creates auditable, cross-referenced commercial property reports, tracing every extracted field to its source and replacing 4+ hours of manual abstraction.',
+    stats: ['£50K ARR · 100% retention'],
+    href: 'https://blueside.app',
+    linkLabel: 'Visit BlueSide',
+  },
+  {
+    id: 'donut-campaign',
+    trigger: 0.26,
+    title: 'Donuts → demand',
+    copy: 'Jake created and hand-delivered an in-person donut campaign to London law firms. The unusual outbound play turned a simple physical touchpoint into £13K ARR and more than 100K LinkedIn impressions.',
+    stats: [],
+    href: 'https://www.linkedin.com/posts/jaketennet_i-hand-delivered-100-donuts-to-law-firms-activity-7335597618519072770-8Ce7',
+    linkLabel: 'See the LinkedIn post',
+  },
+  {
+    id: 'bath-ai',
+    trigger: 0.41,
+    title: 'AI Researcher',
+    copy: 'After completing his final year at the University of Bath, Jake was employed as an AI Research Assistant. He built a reproducible Python platform for psychometric testing of LLMs for a paper with Professor Nello Cristianini, automating API calls, response validation, retry handling and statistical analysis.',
+    stats: [],
+  },
+  {
+    id: 'ubs-tech',
+    trigger: 0.56,
+    title: 'Technology at UBS',
+    copy: 'Jake performance-tested Wealth Management UK’s first Azure cloud application for scalability and production readiness. He also opened UBS Digital Week as MC for around 5,000 global viewers.',
+    stats: ['Graduate return offer'],
+  },
+  {
+    id: 'builders-community',
+    trigger: 0.7,
+    title: 'builders.',
+    copy: 'Jake founded builders., a London community for people building companies. It grew to more than 100 members and brought founders together through coworking events and founder dinners.',
+    stats: [],
+  },
+];
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(palette.sky);
@@ -262,6 +316,8 @@ function createPortfolioBillboard({ lines, borderColor = '#ff5a3d' }) {
     });
   }
   group.userData.billboardBulbs = bulbs;
+  group.userData.billboardPostOffset = width * 0.3;
+  group.userData.billboardPostWidth = 0.32;
   return group;
 }
 
@@ -278,6 +334,7 @@ function placeMilestoneBillboard(config, t, side) {
     .addScaledVector(towardRoad, 0.52)
     .normalize();
   billboard.rotation.y = Math.atan2(towardDrivers.x, towardDrivers.z);
+  return billboard;
 }
 
 const trackControlPoints = [
@@ -413,17 +470,54 @@ function addLandscape() {
   }
 }
 
-function createArch(title, subtitle, color = '#d9ff59') {
+function createArch(title, subtitle, color = '#d9ff59', options = {}) {
   const group = new THREE.Group();
+  const postOffset = options.postOffset ?? 7;
+  const postWidth = options.postWidth ?? 0.48;
+  const crossbarWidth = postOffset * 2 + postWidth;
   group.add(
-    box(0.48, 6.5, 0.48, palette.cream, -7, 3.25, 0),
-    box(0.48, 6.5, 0.48, palette.cream, 7, 3.25, 0),
-    box(14.5, 0.45, 0.48, palette.cream, 0, 6.2, 0),
+    box(postWidth, 6.5, postWidth, palette.cream, -postOffset, 3.25, 0),
+    box(postWidth, 6.5, postWidth, palette.cream, postOffset, 3.25, 0),
+    box(crossbarWidth, 0.45, postWidth, palette.cream, 0, 6.2, 0),
   );
   const sign = createSign(title, subtitle, { width: 6.7, height: 1.55, signY: 7.5, background: color });
   sign.children.slice(1, 3).forEach((post) => { post.visible = false; });
   group.add(sign);
+  group.userData.archPostOffset = postOffset;
+  group.userData.archPostWidth = postWidth;
   return group;
+}
+
+function registerLocalCollider(object, x, z, radius) {
+  object.updateMatrixWorld(true);
+  const position = new THREE.Vector3(x, 0, z).applyMatrix4(object.matrixWorld);
+  const worldScale = object.getWorldScale(new THREE.Vector3());
+  worldColliders.push({
+    position,
+    radius: radius * Math.max(worldScale.x, worldScale.z),
+  });
+}
+
+function registerArchPostColliders(arch) {
+  [-1, 1].forEach((side) => {
+    registerLocalCollider(
+      arch,
+      side * arch.userData.archPostOffset,
+      0,
+      arch.userData.archPostWidth * 0.7,
+    );
+  });
+}
+
+function registerBillboardPostColliders(billboard) {
+  [-1, 1].forEach((side) => {
+    registerLocalCollider(
+      billboard,
+      side * billboard.userData.billboardPostOffset,
+      -0.06,
+      billboard.userData.billboardPostWidth * 0.7,
+    );
+  });
 }
 
 function createBlueSide() {
@@ -507,8 +601,10 @@ function createGarage() {
 }
 
 function addWorldObjects() {
-  placeAtTrack(createArch('START', 'SHIFT TO DRIFT'), 0.018, 0, 0, false);
-  placeMilestoneBillboard({
+  const startArch = placeAtTrack(createArch('LEFT SHIFT TO DRIFT', ''), 0.018, 0, 0, false);
+  registerArchPostColliders(startArch);
+
+  const blueSideBillboard = placeMilestoneBillboard({
     lines: [
       { text: 'Founded BlueSide', color: '#fff6d3', size: 72 },
       { text: 'Bootstrapped', color: '#bafc4f', size: 64 },
@@ -516,9 +612,11 @@ function addWorldObjects() {
       { text: '$0  →  $50K ARR', color: '#ffe45c', size: 78 },
     ],
   }, 0.145, -1);
-  placeAtTrack(createBlueSide(), 0.13, 1, 15);
+  registerBillboardPostColliders(blueSideBillboard);
+  const blueSideBuilding = placeAtTrack(createBlueSide(), 0.13, 1, 15);
+  registerLocalCollider(blueSideBuilding, 0, -0.4, 4.6);
 
-  placeMilestoneBillboard({
+  const donutBillboard = placeMilestoneBillboard({
     borderColor: '#ff4fa7',
     lines: [
       { text: 'Marketing campaign', color: '#fff6d3', size: 68 },
@@ -527,26 +625,32 @@ function addWorldObjects() {
       { text: '100K+ impressions', color: '#ffe45c', size: 67 },
     ],
   }, 0.285, 1);
-  placeAtTrack(createDonutShop(), 0.27, -1, 15);
+  registerBillboardPostColliders(donutBillboard);
+  const donutShop = placeAtTrack(createDonutShop(), 0.27, -1, 15);
+  registerLocalCollider(donutShop, 0, -0.2, 4.2);
 
-  placeMilestoneBillboard({
+  const researchBillboard = placeMilestoneBillboard({
     borderColor: '#43e7ff',
     lines: [
       { text: 'AI research assistant', color: '#fff6d3', size: 74 },
       { text: 'University of Bath', color: '#43e7ff', size: 70 },
     ],
   }, 0.435, -1);
-  placeAtTrack(createResearchLab(), 0.42, 1, 15);
+  registerBillboardPostColliders(researchBillboard);
+  const researchLab = placeAtTrack(createResearchLab(), 0.42, 1, 15);
+  registerLocalCollider(researchLab, 0, -0.3, 4.2);
 
-  placeMilestoneBillboard({
+  const ubsBillboard = placeMilestoneBillboard({
     borderColor: '#bafc4f',
     lines: [
       { text: 'Tech at UBS', color: '#fff6d3', size: 96 },
     ],
   }, 0.585, 1);
-  placeAtTrack(createTower(), 0.57, -1, 17);
+  registerBillboardPostColliders(ubsBillboard);
+  const ubsTower = placeAtTrack(createTower(), 0.57, -1, 17);
+  registerLocalCollider(ubsTower, 0, -0.5, 3.9);
 
-  placeMilestoneBillboard({
+  const buildersBillboard = placeMilestoneBillboard({
     borderColor: '#ff5a3d',
     lines: [
       { text: 'builders.', color: '#fff6d3', size: 86 },
@@ -555,9 +659,22 @@ function addWorldObjects() {
       { text: 'Coworking + dinners', color: '#ffe45c', size: 61 },
     ],
   }, 0.725, -1);
-  placeAtTrack(createCamp(), 0.71, 1, 16);
-  placeAtTrack(createGarage(), 0.84, -1, 16);
-  placeAtTrack(createArch('FINISH', 'CLOCK STOPS HERE', '#ff5d35'), FINISH_T, 0, 0, false);
+  registerBillboardPostColliders(buildersBillboard);
+  const buildersCamp = placeAtTrack(createCamp(), 0.71, 1, 16);
+  registerLocalCollider(buildersCamp, -2.7, -0.5, 1.9);
+  registerLocalCollider(buildersCamp, 0, 0.9, 1.9);
+  registerLocalCollider(buildersCamp, 2.7, -0.5, 1.9);
+  registerLocalCollider(buildersCamp, 0, 3.3, 0.7);
+  const coagentGarage = placeAtTrack(createGarage(), 0.84, -1, 16);
+  registerLocalCollider(coagentGarage, 0, -0.4, 4.5);
+  const finishArch = placeAtTrack(
+    createArch('FINISH', 'CLOCK STOPS HERE', '#ff5d35', { postOffset: 8.4, postWidth: 0.9 }),
+    FINISH_T,
+    0,
+    0,
+    false,
+  );
+  registerArchPostColliders(finishArch);
 }
 
 function createCar() {
@@ -603,16 +720,30 @@ function createCar() {
 
   const boostFlames = [];
   [-0.72, 0.72].forEach((x) => {
-    const flame = new THREE.Mesh(
-      new THREE.ConeGeometry(0.18, 0.8, 5),
-      flatMaterial(palette.acid, { emissive: palette.orange, emissiveIntensity: 2.8, roughness: 0.45 }),
-    );
-    flame.position.set(x, 0.39, 2.88);
-    flame.rotation.x = Math.PI / 2;
-    flame.visible = false;
-    car.add(flame);
-    boostFlames.push(flame);
+    [
+      { radius: 0.34, length: 1.8, color: palette.orange, emissive: palette.orange, intensity: 4.2, scale: 1 },
+      { radius: 0.18, length: 1.35, color: palette.acid, emissive: palette.yellow, intensity: 5.5, scale: 0.88 },
+    ].forEach((layer, layerIndex) => {
+      const flame = new THREE.Mesh(
+        new THREE.ConeGeometry(layer.radius, layer.length, 6),
+        flatMaterial(layer.color, {
+          emissive: layer.emissive,
+          emissiveIntensity: layer.intensity,
+          roughness: 0.32,
+        }),
+      );
+      flame.position.set(x, 0.39, 3.28 - layerIndex * 0.08);
+      flame.rotation.x = Math.PI / 2;
+      flame.visible = false;
+      flame.userData.boostScale = layer.scale;
+      car.add(flame);
+      boostFlames.push(flame);
+    });
   });
+
+  const boostLight = new THREE.PointLight(palette.acid, 0, 10, 2);
+  boostLight.position.set(0, 0.48, 3.2);
+  car.add(boostLight);
 
   [-1.72, 1.72].forEach((x) => car.add(box(0.32, 0.18, 0.5, palette.orange, x, 1.36, 0.3)));
 
@@ -636,6 +767,7 @@ function createCar() {
   car.userData.frontPivots = frontPivots;
   car.userData.brakeLights = brakeLights;
   car.userData.boostFlames = boostFlames;
+  car.userData.boostLight = boostLight;
   car.scale.setScalar(0.86);
   scene.add(car);
   return car;
@@ -690,6 +822,8 @@ const state = {
   progress: 0,
   driftChain: 0,
   driftTime: 0,
+  driftDuration: 0,
+  driftWasActive: false,
   driftMultiplier: 1,
   driftGrace: 0,
   driftDisplay: 0,
@@ -703,6 +837,12 @@ const state = {
   finalTime: 0,
   finished: false,
   finishSide: -1,
+  popupsEnabled: true,
+  popupOpen: false,
+  timerWasRunning: false,
+  velocityBeforePopup: new THREE.Vector3(),
+  boostTimerBeforePopup: 0,
+  seenMilestones: new Set(),
 };
 
 function nearestTrackInfo(position) {
@@ -755,6 +895,8 @@ function resetCar(snapCamera = false, toStart = false) {
   state.progress = index / TRACK_SAMPLE_COUNT;
   state.driftChain = 0;
   state.driftTime = 0;
+  state.driftDuration = 0;
+  state.driftWasActive = false;
   state.driftMultiplier = 1;
   state.driftGrace = 0;
   state.driftDisplay = 0;
@@ -790,11 +932,76 @@ function showCountdownLabel(label) {
   if (label) countdownElement.classList.add('is-visible');
 }
 
-function startDrive() {
+function closeMilestone({ resumeTimer = true } = {}) {
+  if (!state.popupOpen) return;
+  state.popupOpen = false;
+  milestoneScreen.classList.remove('is-active');
+  milestoneScreen.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('is-reading');
   input.keys.clear();
   input.touch.clear();
+  if (resumeTimer && state.started && !state.finished) {
+    state.velocity.copy(state.velocityBeforePopup);
+    state.boostTimer = state.boostTimerBeforePopup;
+    if (state.timerWasRunning) state.timerRunning = true;
+  }
+  state.timerWasRunning = false;
+  state.velocityBeforePopup.set(0, 0, 0);
+  state.boostTimerBeforePopup = 0;
+}
+
+function openMilestone(milestone, index) {
+  state.seenMilestones.add(milestone.id);
+  state.popupOpen = true;
+  state.timerWasRunning = state.timerRunning;
+  state.timerRunning = false;
+  state.velocityBeforePopup.copy(state.velocity);
+  state.boostTimerBeforePopup = state.boostTimer;
+  state.velocity.set(0, 0, 0);
+  state.boostTimer = 0;
+  input.keys.clear();
+  input.touch.clear();
+
+  milestoneCheckpoint.textContent = `Checkpoint ${String(index + 1).padStart(2, '0')} / ${String(milestones.length).padStart(2, '0')}`;
+  milestoneTitle.textContent = milestone.title;
+  milestoneCopy.textContent = milestone.copy;
+  milestoneStats.hidden = milestone.stats.length === 0;
+  milestoneStats.replaceChildren(...milestone.stats.map((stat) => {
+    const item = document.createElement('li');
+    item.textContent = stat;
+    return item;
+  }));
+  const hasLink = Boolean(milestone.href);
+  milestoneLink.hidden = !hasLink;
+  milestoneActions.classList.toggle('is-single-action', !hasLink);
+  if (hasLink) {
+    milestoneLink.href = milestone.href;
+    milestoneLink.childNodes[0].textContent = `${milestone.linkLabel} `;
+  } else {
+    milestoneLink.removeAttribute('href');
+  }
+
+  milestoneScreen.classList.add('is-active');
+  milestoneScreen.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('is-reading');
+  milestoneContinue.focus({ preventScroll: true });
+}
+
+function updateMilestonePopups() {
+  if (!state.popupsEnabled || state.popupOpen || !state.started || state.finished || state.countdown > 0) return;
+  const milestoneIndex = milestones.findIndex((milestone) => (
+    !state.seenMilestones.has(milestone.id) && state.progress >= milestone.trigger
+  ));
+  if (milestoneIndex >= 0) openMilestone(milestones[milestoneIndex], milestoneIndex);
+}
+
+function startDrive({ popups = true } = {}) {
+  input.touch.clear();
+  closeMilestone({ resumeTimer: false });
   state.started = true;
   state.finished = false;
+  state.popupsEnabled = popups;
+  state.seenMilestones.clear();
   state.timerRunning = false;
   state.runTime = 0;
   state.finalTime = 0;
@@ -814,7 +1021,7 @@ function restartRun() {
     restartExperience();
     return;
   }
-  startDrive();
+  startDrive({ popups: state.popupsEnabled });
 }
 
 function restartExperience() {
@@ -826,6 +1033,7 @@ function restartExperience() {
   state.countdown = 0;
   input.keys.clear();
   input.touch.clear();
+  closeMilestone({ resumeTimer: false });
   resetCar(true, true);
   hero.classList.remove('is-hidden');
   document.body.classList.remove('is-playing');
@@ -927,6 +1135,16 @@ function finishRun() {
 
   const formattedTime = formatRaceTime(state.finalTime);
   finishTime.textContent = formattedTime;
+  const emailUnlocked = !state.popupsEnabled && state.finalTime < 40000;
+  if (emailUnlocked) {
+    finishCopy.textContent = 'Fast enough to reach the inbox.';
+  } else if (state.popupsEnabled && state.finalTime < 40000) {
+    finishCopy.textContent = 'Play again with no pop ups to get my email.';
+  } else {
+    finishCopy.textContent = 'Get a time under 40 seconds to get my email.';
+  }
+  finishEmail.hidden = !emailUnlocked;
+  finishActions.classList.toggle('is-single-action', !emailUnlocked);
   const subject = `Interested in having a chat — ${formattedTime} lap`;
   const body = `Hi Jake,\n\nI'm interested in having a chat.\n\nI also clocked a ${formattedTime} on Jake's Road, which surely earns me pole position in your inbox.\n\nBest,`;
   finishEmail.href = `mailto:jaketennet@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -935,7 +1153,7 @@ function finishRun() {
 }
 
 function updatePhysics(delta) {
-  if (!state.started || state.countdown > 0.62 || state.finished) return;
+  if (!state.started || state.countdown > 0.62 || state.finished || state.popupOpen) return;
 
   const throttle = controlActive('throttle');
   const brake = controlActive('brake');
@@ -1057,6 +1275,27 @@ function updatePhysics(delta) {
   state.position.addScaledVector(state.velocity, delta);
   state.position.y = 0.06;
 
+  worldColliders.forEach((collider) => {
+    const offsetX = state.position.x - collider.position.x;
+    const offsetZ = state.position.z - collider.position.z;
+    const minimumDistance = CAR_COLLISION_RADIUS + collider.radius;
+    const distanceSquared = offsetX * offsetX + offsetZ * offsetZ;
+    if (distanceSquared >= minimumDistance * minimumDistance) return;
+
+    const distance = Math.sqrt(distanceSquared);
+    const normalX = distance > 0.001 ? offsetX / distance : 1;
+    const normalZ = distance > 0.001 ? offsetZ / distance : 0;
+    const correction = minimumDistance - distance;
+    state.position.x += normalX * correction;
+    state.position.z += normalZ * correction;
+
+    const inwardSpeed = state.velocity.x * normalX + state.velocity.z * normalZ;
+    if (inwardSpeed < 0) {
+      state.velocity.x -= normalX * inwardSpeed * 1.18;
+      state.velocity.z -= normalZ * inwardSpeed * 1.18;
+    }
+  });
+
   const nearest = nearestTrackInfo(state.position);
   state.nearestIndex = nearest.index;
   state.roadDistance = nearest.distance;
@@ -1089,6 +1328,9 @@ function updatePhysics(delta) {
   state.steerVisual = THREE.MathUtils.damp(state.steerVisual, steerInput, 9, delta);
 
   if (state.drifting) {
+    if (!state.driftWasActive) state.driftDuration = 0;
+    state.driftWasActive = true;
+    state.driftDuration += delta;
     state.driftGrace = 1.05;
     state.driftDisplay = 1.2;
     state.driftTime += delta;
@@ -1104,13 +1346,16 @@ function updatePhysics(delta) {
       spawnSkidMarks();
       state.skidTimer = 0.045;
     }
-  } else if (state.driftChain > 0) {
-    state.driftGrace -= delta;
-    state.driftDisplay = Math.max(0, state.driftDisplay - delta);
-    if (state.boostTimer <= 0) {
-      state.driftChain = 0;
-      state.driftTime = 0;
-      state.driftMultiplier = 1;
+  } else {
+    state.driftWasActive = false;
+    if (state.driftChain > 0) {
+      state.driftGrace -= delta;
+      state.driftDisplay = Math.max(0, state.driftDisplay - delta);
+      if (state.boostTimer <= 0) {
+        state.driftChain = 0;
+        state.driftTime = 0;
+        state.driftMultiplier = 1;
+      }
     }
   }
 }
@@ -1135,8 +1380,14 @@ function updateCar(delta, elapsed) {
   });
   car.userData.boostFlames.forEach((flame, index) => {
     flame.visible = state.boostTimer > 0;
-    flame.scale.y = 0.8 + Math.sin(elapsed * 42 + index) * 0.24;
+    const flicker = 1.08 + Math.sin(elapsed * 48 + index * 0.8) * 0.32;
+    flame.scale.y = flame.userData.boostScale * flicker;
+    flame.scale.x = 0.94 + Math.sin(elapsed * 37 + index) * 0.12;
+    flame.scale.z = flame.scale.x;
   });
+  car.userData.boostLight.intensity = state.boostTimer > 0
+    ? 7.5 + Math.sin(elapsed * 46) * 2.5
+    : 0;
 
   sunLight.position.copy(state.position).add(new THREE.Vector3(-34, 58, 30));
   sunLight.target.position.copy(state.position);
@@ -1178,14 +1429,12 @@ function updateUi() {
   surfaceHud.classList.toggle('is-offroad', !state.onRoad);
 
   const boosting = state.boostTimer > 0;
-  const showDrift = state.drifting || (boosting && state.driftChain > 0);
+  const showDrift = state.drifting;
   const driftScale = THREE.MathUtils.clamp(0.78 + state.driftTime * 0.06, 0.78, 1.18);
   driftHud.classList.toggle('is-active', showDrift);
-  driftHud.classList.toggle('is-boosting', boosting);
+  driftHud.classList.remove('is-boosting');
   driftHud.style.setProperty('--drift-scale', driftScale.toFixed(3));
-  if (state.driftChain > 0) {
-    driftScore.textContent = Math.round(state.driftChain).toLocaleString();
-  }
+  driftDurationValue.textContent = state.driftDuration.toFixed(2).replace(/^0/, '');
   document.body.classList.toggle('is-drifting', state.drifting);
   document.body.classList.toggle('is-boosting', boosting);
 }
@@ -1203,23 +1452,36 @@ function animateWorld(elapsed) {
   });
 }
 
-startButton.addEventListener('click', startDrive);
+startButton.addEventListener('click', () => startDrive({ popups: true }));
 restartButton.addEventListener('click', restartRun);
-startAgainButton.addEventListener('click', startDrive);
+startAgainButton.addEventListener('click', () => startDrive({ popups: false }));
+milestoneContinue.addEventListener('click', () => closeMilestone());
 
 addEventListener('keydown', (event) => {
   const key = event.key.toLowerCase();
+  if (state.popupOpen) {
+    if (key === ' ') {
+      event.preventDefault();
+      closeMilestone();
+      return;
+    }
+    if (key === 'escape') closeMilestone();
+    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', 'r', 'escape'].includes(key)) {
+      event.preventDefault();
+    }
+    return;
+  }
   if (state.finished && (key === 'enter' || key === ' ')) {
     event.preventDefault();
-    startDrive();
+    startDrive({ popups: false });
     return;
   }
   if (state.started && ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', 'r'].includes(key)) {
     event.preventDefault();
   }
   input.keys.add(key);
-  if (key === 'r' && state.started && !event.repeat) startDrive();
-  if ((key === 'enter' || key === ' ') && !state.started) startDrive();
+  if (key === 'r' && state.started && !event.repeat) startDrive({ popups: state.popupsEnabled });
+  if ((key === 'enter' || key === ' ') && !state.started) startDrive({ popups: true });
 });
 
 addEventListener('keyup', (event) => input.keys.delete(event.key.toLowerCase()));
@@ -1253,6 +1515,7 @@ function animate() {
   updateRaceClock(delta);
   updateCountdown(delta);
   updatePhysics(delta);
+  updateMilestonePopups();
   updateParticles(delta);
   updateCar(delta, elapsed);
   updateCamera(delta);

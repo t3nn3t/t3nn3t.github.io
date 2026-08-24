@@ -48,8 +48,8 @@
           <feColorMatrix in="SourceGraphic" result="red" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" />
           <feColorMatrix in="SourceGraphic" result="green" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" />
           <feColorMatrix in="SourceGraphic" result="blue" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" />
-          <feOffset in="red" dx="-2.1" result="red-shift" />
-          <feOffset in="blue" dx="2.1" result="blue-shift" />
+          <feOffset in="red" dx="-3.4" dy="-0.25" result="red-shift" />
+          <feOffset in="blue" dx="3.4" dy="0.25" result="blue-shift" />
           <feBlend in="red-shift" in2="green" mode="screen" result="red-green" />
           <feBlend in="red-green" in2="blue-shift" mode="screen" />
         </filter>
@@ -69,13 +69,12 @@
       <main>
       <section class="hero" id="hero" aria-labelledby="hero-title">
         <div class="hero__title">
-          <p class="eyebrow">Jake Tennet presents</p>
           <h1 id="hero-title"><span>Jake</span><span>Tennet</span></h1>
           <p class="hero__intro">A playable portfolio</p>
         </div>
         <div class="hero__start">
           <button class="start-button" id="start-drive" type="button">
-            <span aria-hidden="true">▶</span> Press start
+            <span aria-hidden="true">▶</span> Press space
           </button>
           <p class="hero__controls">WASD / arrows · Shift to drift</p>
           <p class="hero__coin" aria-hidden="true">1 player · © 2026 JT Games · 1 credit</p>
@@ -108,7 +107,7 @@
         </div>
 
         <div class="drift-hud" id="drift-hud" aria-live="polite">
-          <strong id="drift-score">0</strong>
+          <strong><span id="drift-duration">.00</span><small>s</small></strong>
         </div>
 
         <div class="surface-hud" id="surface-hud">Asphalt</div>
@@ -134,14 +133,32 @@
 
       <div class="countdown" id="countdown" aria-live="assertive"></div>
 
+      <section class="milestone-screen" id="milestone-screen" aria-hidden="true">
+        <div class="milestone-tooltip" role="dialog" aria-modal="true" aria-labelledby="milestone-title" aria-describedby="milestone-copy">
+          <div class="milestone-tooltip__header">
+            <p id="milestone-checkpoint">Checkpoint 01 / 05</p>
+            <span>Game paused</span>
+          </div>
+          <div class="milestone-tooltip__body">
+            <h2 id="milestone-title">BlueSide</h2>
+            <p id="milestone-copy"></p>
+            <ul class="milestone-stats" id="milestone-stats" aria-label="Highlights"></ul>
+          </div>
+          <div class="milestone-tooltip__actions">
+            <a id="milestone-link" href="#" target="_blank" rel="noreferrer">Visit website <span aria-hidden="true">↗</span></a>
+            <button id="milestone-continue" type="button">Continue drive <span aria-hidden="true">▶</span></button>
+          </div>
+        </div>
+      </section>
+
       <section class="finish-screen" id="finish-screen" aria-hidden="true">
         <div class="finish-panel" role="dialog" aria-modal="true" aria-labelledby="finish-title" aria-describedby="finish-copy">
           <p class="finish-panel__kicker">Stage clear!</p>
           <h2 id="finish-title"><span id="finish-time">00:00.000</span></h2>
           <p id="finish-copy">Fast enough to reach the inbox.</p>
           <div class="finish-actions">
-            <a id="finish-email" href="mailto:jaketennet@gmail.com">Send Jake an email <span aria-hidden="true">↗</span></a>
-            <button id="start-again" type="button">Start again <span aria-hidden="true">↻</span></button>
+            <a id="finish-email" href="mailto:jaketennet@gmail.com">Send Jake an email</a>
+            <button id="start-again" type="button"><span>Play again for scores</span><span>(no pop ups)</span></button>
           </div>
         </div>
       </section>
