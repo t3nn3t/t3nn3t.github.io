@@ -51,7 +51,7 @@ scene.fog = new THREE.Fog(palette.sky, 72, 190);
 const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 360);
 scene.add(camera);
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -59,7 +59,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.06;
 
 function resizeRenderer() {
-  const scale = innerWidth < 760 ? 0.64 : 0.76;
+  const scale = innerWidth < 760 ? 0.76 : 0.92;
   renderer.setPixelRatio(1);
   renderer.setSize(Math.max(1, Math.floor(innerWidth * scale)), Math.max(1, Math.floor(innerHeight * scale)), false);
   canvas.style.width = `${innerWidth}px`;
@@ -191,39 +191,45 @@ function createSign(title, subtitle, options = {}) {
   return group;
 }
 
-function createPortfolioBillboard({ header, lines, borderColor = '#ff5a3d' }) {
+function createPortfolioBillboard({ lines, borderColor = '#ff5a3d' }) {
   const group = new THREE.Group();
   const width = 9.4;
   const height = 4.25;
   const signY = 5.15;
 
   const billboardCanvas = document.createElement('canvas');
-  billboardCanvas.width = 1024;
-  billboardCanvas.height = 512;
+  const textureScale = 2;
+  const textureWidth = 1024;
+  const textureHeight = 512;
+  billboardCanvas.width = textureWidth * textureScale;
+  billboardCanvas.height = textureHeight * textureScale;
   const context = billboardCanvas.getContext('2d');
+  context.scale(textureScale, textureScale);
   context.fillStyle = '#111936';
-  context.fillRect(0, 0, billboardCanvas.width, billboardCanvas.height);
-  context.fillStyle = '#43e7ff';
-  context.fillRect(0, 0, billboardCanvas.width, 76);
-  context.fillStyle = '#090b18';
-  context.font = '800 34px monospace';
+  context.fillRect(0, 0, textureWidth, textureHeight);
   context.textAlign = 'center';
   context.textBaseline = 'middle';
-  context.fillText(header.toUpperCase(), billboardCanvas.width / 2, 39, 920);
-  const linePositions = [151, 238, 316, 416];
+  const positionsByLineCount = {
+    1: [256],
+    2: [190, 322],
+    3: [135, 256, 377],
+    4: [90, 200, 310, 420],
+  };
+  const linePositions = positionsByLineCount[lines.length];
   lines.forEach(({ text, color, size }, index) => {
     context.fillStyle = color;
     context.font = `900 ${size}px Arial, sans-serif`;
-    context.fillText(text.toUpperCase(), billboardCanvas.width / 2, linePositions[index], 920);
+    context.fillText(text.toUpperCase(), textureWidth / 2, linePositions[index], 920);
   });
   context.strokeStyle = borderColor;
   context.lineWidth = 18;
-  context.strokeRect(9, 9, billboardCanvas.width - 18, billboardCanvas.height - 18);
+  context.strokeRect(9, 9, textureWidth - 18, textureHeight - 18);
 
   const texture = new THREE.CanvasTexture(billboardCanvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.magFilter = THREE.NearestFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
   group.add(
     box(width + 0.55, height + 0.55, 0.34, palette.orange, 0, signY, 0),
@@ -503,7 +509,6 @@ function createGarage() {
 function addWorldObjects() {
   placeAtTrack(createArch('START', 'SHIFT TO DRIFT'), 0.018, 0, 0, false);
   placeMilestoneBillboard({
-    header: 'Career milestone',
     lines: [
       { text: 'Founded BlueSide', color: '#fff6d3', size: 72 },
       { text: 'Bootstrapped', color: '#bafc4f', size: 64 },
@@ -514,11 +519,10 @@ function addWorldObjects() {
   placeAtTrack(createBlueSide(), 0.13, 1, 15);
 
   placeMilestoneBillboard({
-    header: 'Campaign win',
     borderColor: '#ff4fa7',
     lines: [
-      { text: 'Donuts for law firms', color: '#fff6d3', size: 67 },
-      { text: 'In-person campaign', color: '#ff9ccc', size: 55 },
+      { text: 'Marketing campaign', color: '#fff6d3', size: 68 },
+      { text: 'With donuts', color: '#ff9ccc', size: 78 },
       { text: '$13K ARR', color: '#bafc4f', size: 82 },
       { text: '100K+ impressions', color: '#ffe45c', size: 67 },
     ],
@@ -526,31 +530,23 @@ function addWorldObjects() {
   placeAtTrack(createDonutShop(), 0.27, -1, 15);
 
   placeMilestoneBillboard({
-    header: 'AI research',
     borderColor: '#43e7ff',
     lines: [
-      { text: 'Research assistant', color: '#fff6d3', size: 67 },
-      { text: 'University of Bath', color: '#43e7ff', size: 62 },
-      { text: 'LLM psychometrics', color: '#bafc4f', size: 64 },
-      { text: 'Reproducible platform', color: '#ffe45c', size: 57 },
+      { text: 'AI research assistant', color: '#fff6d3', size: 74 },
+      { text: 'University of Bath', color: '#43e7ff', size: 70 },
     ],
   }, 0.435, -1);
   placeAtTrack(createResearchLab(), 0.42, 1, 15);
 
   placeMilestoneBillboard({
-    header: 'Year in industry',
     borderColor: '#bafc4f',
     lines: [
-      { text: 'Wealth tech at UBS', color: '#fff6d3', size: 69 },
-      { text: 'Azure performance', color: '#43e7ff', size: 61 },
-      { text: 'Opened Digital Week', color: '#bafc4f', size: 59 },
-      { text: '~5,000 global viewers', color: '#ffe45c', size: 58 },
+      { text: 'Tech at UBS', color: '#fff6d3', size: 96 },
     ],
   }, 0.585, 1);
   placeAtTrack(createTower(), 0.57, -1, 17);
 
   placeMilestoneBillboard({
-    header: 'Community founded',
     borderColor: '#ff5a3d',
     lines: [
       { text: 'builders.', color: '#fff6d3', size: 86 },
